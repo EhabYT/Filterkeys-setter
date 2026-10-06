@@ -54,6 +54,14 @@ in 2026, which no longer ships `v143`).
   ```
 
   Add `/p:PlatformToolset=v143` to pin an older toolset when several are installed side by side.
+* **One-shot script:** `tools\build.cmd` finds the installed Visual Studio through `vswhere`,
+  warns when the MFC component is missing, rebuilds `Release` for `Win32` and `x64`, and prints
+  every error and warning at the end. Logs land in `build-Release-<platform>.log`.
+
+  ```cmd
+  tools\build.cmd            :: both platforms
+  tools\build.cmd x64 Debug  :: one platform and configuration
+  ```
 
 The `FilterKeysSetter.Setup` project needs the free
 [Microsoft Visual Studio Installer Projects](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)

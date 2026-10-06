@@ -148,6 +148,13 @@ recorded in the project file instead of depending on a default.
 The setup project needs *Microsoft Visual Studio Installer Projects* **3.0.0 or
 newer** under VS 2026; older builds of the extension crash on it.
 
+`tools/build.cmd` wraps all of this: it resolves the Visual Studio installation
+with `vswhere` (so it works regardless of which version is present), reports
+whether the MFC component is installed, and builds `FilterKeysSetter.vcxproj`
+rather than the solution -- the `.vdproj` and its extension have no bearing on
+whether the application compiles. Errors and warnings from every platform are
+collected into one list at the end.
+
 ## Testing checklist
 
 **Functional**
