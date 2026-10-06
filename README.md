@@ -72,5 +72,24 @@ Every push and pull request is built for both `Win32` and `x64` by the
 [build workflow](.github/workflows/build.yml), which publishes the resulting
 `FilterKeysSetter.exe` as a downloadable artifact.
 
-# Usage:
-![Sample usage screenshot](https://geekhack.org/index.php?action=dlattach;topic=41881.0;attach=17471;image)
+# Usage
+
+| Dark theme (default) | Light theme |
+| --- | --- |
+| <img src="docs/img/dialog-dark.png" width="380" alt="Main dialog in the dark theme"> | <img src="docs/img/dialog-light.png" width="380" alt="Main dialog in the light theme"> |
+
+Set *Repeat delay* and *Repeat rate* with the sliders or type exact millisecond
+values, type into the test area to feel the result, then press *Apply*. Tick
+*Save to registry* to keep the settings across restarts. The *Load settings*
+row fills the dialog from the current system state, the registry, the standard
+keyboard control panel values, the Windows defaults, or the values that were
+active when the program started.
+
+> **About these two pictures:** they are *rendered* from `FilterKeysSetter.rc`
+> and the palette in `Theme.cpp` by `tools/render-dialog.py` -- they are not
+> screenshots of a running program. Every control sits exactly where the
+> resource script puts it, but the dialog font is substituted and the native
+> control chrome is only approximated. They will be replaced with real
+> screenshots once a build is available. The screenshot of the original
+> version 1.02 lives in
+> [Soarer's geekhack thread](https://geekhack.org/index.php?topic=41881.0).

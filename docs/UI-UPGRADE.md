@@ -155,6 +155,23 @@ rather than the solution -- the `.vdproj` and its extension have no bearing on
 whether the application compiles. Errors and warnings from every platform are
 collected into one list at the end.
 
+## Dialog preview
+
+`tools/render-dialog.py` draws the main dialog from the resource script and the
+theme palette:
+
+```cmd
+python tools\render-dialog.py            :: both themes into docs\img
+python tools\render-dialog.py --theme dark
+```
+
+It shares its parser with the layout checker, so the geometry in
+`docs/img/dialog-dark.png` and `docs/img/dialog-light.png` is the geometry in
+`FilterKeysSetter.rc`: if a control is moved, the picture moves with it on the
+next run. What it cannot show is the dialog font (Segoe UI is not available
+outside Windows) and the native chrome of the common controls. It is a layout
+preview and a stand-in for the README, not a substitute for a screenshot.
+
 ## Testing checklist
 
 **Functional**
