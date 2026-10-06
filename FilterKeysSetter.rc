@@ -1,4 +1,4 @@
-// Microsoft Visual C++ generated resource script.
+﻿// Microsoft Visual C++ generated resource script.
 //
 #include "resource.h"
 
@@ -25,9 +25,9 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
 //
 
 IDD_ABOUTBOX DIALOGEX 0, 0, 235, 55
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_CAPTION | WS_SYSMENU
 CAPTION "About FilterKeysSetter"
-FONT 8, "MS Shell Dlg", 0, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     ICON            IDR_MAINFRAME,IDC_STATIC,11,17,20,20
     LTEXT           "FilterKeysSetter Version 1.11",IDC_STATIC,40,10,119,8,SS_NOPREFIX
@@ -36,10 +36,10 @@ BEGIN
 END
 
 IDD_FILTERKEYSSETTER_DIALOG DIALOGEX 0, 0, 228, 265
-STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_VISIBLE | WS_CAPTION
+STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "FilterKeys Setter"
-FONT 8, "MS Shell Dlg", 0, 0, 0x1
+FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     CONTROL         "Ignore quick keystrokes and/or set the repeat rate",IDC_IGNORE_QUICK,
                     "Button",BS_AUTORADIOBUTTON | BS_MULTILINE | WS_GROUP | WS_TABSTOP,12,18,108,24
