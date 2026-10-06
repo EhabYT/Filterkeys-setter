@@ -36,6 +36,7 @@ protected:
 	// Theming
 	void ApplyTheme();
 	void ApplyThemeToChildren();
+	void RefreshThemeFromSystem();
 
 	// Slider <-> edit box synchronisation
 	void InitSliders();
@@ -71,6 +72,7 @@ protected:
 	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnSettingChange(UINT uFlags, LPCTSTR lpszSection);
 
 	DECLARE_MESSAGE_MAP()
 

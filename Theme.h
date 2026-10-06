@@ -33,6 +33,11 @@ public:
 	static ThemeMode LoadPreference();
 	static void SavePreference(ThemeMode mode);
 
+	// True while Windows runs one of the high contrast schemes. The custom
+	// palette must then step aside: those colours are a deliberate
+	// accessibility choice by the user and overriding them is harmful.
+	static bool IsHighContrast();
+
 	void SetMode(ThemeMode mode);
 	ThemeMode GetMode() const { return m_mode; }
 	bool IsDark() const { return m_mode == ThemeMode::Dark; }

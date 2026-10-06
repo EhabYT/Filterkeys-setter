@@ -190,6 +190,7 @@ BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
 	ON_WM_HSCROLL()
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_DELAY_SLIDER, OnCustomDrawSlider)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_REPEAT_SLIDER, OnCustomDrawSlider)
+	ON_WM_SETTINGCHANGE()
 END_MESSAGE_MAP()
 
 
@@ -231,8 +232,7 @@ BOOL CFilterKeysSetterDlg::OnInitDialog()
 	InitSliders();
 	InitToolTips();
 
-	m_chkDarkTheme.SetCheck(m_theme.IsDark() ? BST_CHECKED : BST_UNCHECKED);
-	ApplyTheme();
+	RefreshThemeFromSystem();
 
 	// Init from current FilterKeys settings...
 	OnBnClickedSetCurrent();
@@ -389,6 +389,32 @@ void CFilterKeysSetterDlg::OnBnClickedDarkTheme()
 	m_theme.SetMode(mode);
 	CTheme::SavePreference(mode);
 	ApplyTheme();
+}
+
+// Reconciles the stored preference with what the system currently demands.
+void CFilterKeysSetterDlg::RefreshThemeFromSystem()
+{
+	const bool bHighContrast = CTheme::IsHighContrast();
+
+	// SetMode() forces Light while high contrast is on, so the stored
+	// preference can simply be handed over unchanged.
+	m_theme.SetMode(CTheme::LoadPreference());
+
+	if (::IsWindow(m_chkDarkTheme.GetSafeHwnd())) {
+		m_chkDarkTheme.SetCheck(m_theme.IsDark() ? BST_CHECKED : BST_UNCHECKED);
+		// Offering a theme switch that cannot take effect would be misleading.
+		m_chkDarkTheme.EnableWindow(bHighContrast ? FALSE : TRUE);
+	}
+
+	ApplyTheme();
+}
+
+// Fires when the user turns high contrast on or off while the dialog is open.
+void CFilterKeysSetterDlg::OnSettingChange(UINT uFlags, LPCTSTR lpszSection)
+{
+	CDialog::OnSettingChange(uFlags, lpszSection);
+	RefreshThemeFromSystem();
+	UpdateStatus();
 }
 
 void CFilterKeysSetterDlg::ApplyTheme()

@@ -89,8 +89,23 @@ void CTheme::SavePreference(ThemeMode mode)
 	}
 }
 
+bool CTheme::IsHighContrast()
+{
+	HIGHCONTRAST hc = { 0 };
+	hc.cbSize = sizeof(hc);
+	if (!::SystemParametersInfo(SPI_GETHIGHCONTRAST, sizeof(hc), &hc, 0)) {
+		return false;
+	}
+	return (hc.dwFlags & HCF_HIGHCONTRASTON) != 0;
+}
+
 void CTheme::SetMode(ThemeMode mode)
 {
+	// High contrast always wins over the stored preference.
+	if (IsHighContrast()) {
+		mode = ThemeMode::Light;
+	}
+
 	m_mode = mode;
 	m_palette = (mode == ThemeMode::Dark) ? kDarkPalette : MakeLightPalette();
 	Rebuild();

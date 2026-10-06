@@ -1,0 +1,177 @@
+# UI upgrade — FilterKeys Setter 1.10 → 1.11
+
+Reference for the dialog rework: what changed, how to verify it, and how to get
+back if something turns out wrong.
+
+## Scope
+
+The application is **C++ / MFC**, not WinForms or WPF, so the upgrade is built
+from `WM_CTLCOLOR*` handlers, `SetWindowTheme`, custom draw and GDI — there are
+no styles, resource dictionaries, Mica or NuGet packages involved. No new
+dependency was added; the only extra import library is `uxtheme.lib`, which
+ships with the Windows SDK.
+
+Deliberately **not** done: owner-drawing the push buttons, and per-monitor DPI
+awareness. Both are noted under *Known trade-offs*.
+
+## What changed
+
+| Area | Before | After |
+|---|---|---|
+| Dialog font | `MS Shell Dlg` 8 pt (maps to Tahoma, a Windows XP look) | Segoe UI 9 pt |
+| DPI | Not declared — bitmap-stretched and blurry above 100 % scaling | System DPI aware |
+| Manifest | Present in `res/`, referenced by nothing, hard-coded `X86` | Merged into the binary; `supportedOS` for Windows 7–11, `longPathAware` |
+| Colours | System default | Dark theme from the icon palette, light theme still available |
+| Repeat delay / rate | Numeric edit boxes only | Edit boxes plus synchronised sliders with a cyan thumb |
+| Flags readout | `(122)` | `Flags: 122 (0x7A)` |
+| Status | None | Live line showing what Windows is actually using |
+| Help | None | Tooltips on all 25 controls, flag checkboxes name their `FKF_*` constant |
+| Accessible names | Missing — all labels sat at the end of the resource | Each label precedes its control; sliders carry their name in the window text |
+| About box | Native light only | Follows the selected theme |
+| High contrast | Ignored | Custom palette steps aside automatically |
+
+## Colour palette
+
+| Role | Dark | Light |
+|---|---|---|
+| Background top | `#0A2342` | `COLOR_3DFACE` |
+| Background bottom | `#1E5A9E` | `COLOR_3DFACE` |
+| Surface (edit fields) | `#123B6E` | `COLOR_WINDOW` |
+| Accent (slider thumb) | `#4B9BEE` | `#1E5A9E` |
+| Primary text | `#FFFFFF` | `COLOR_WINDOWTEXT` |
+| Secondary text | `#E0E0E0` | `COLOR_GRAYTEXT` |
+
+White on `#0A2342` is roughly 15:1, comfortably past the 4.5:1 requirement.
+`#4B9BEE` is used for fills only, never for text.
+
+## Files touched
+
+```
+Theme.h / Theme.cpp        new — palette, brushes, gradient, title bar, high contrast
+FilterKeysSetterDlg.h/.cpp theming, sliders, tooltips, status line, About box
+FilterKeysSetter.rc        Segoe UI, new layout (228 × 322 DLU), control order
+resource.h                 IDC_DELAY_SLIDER, IDC_REPEAT_SLIDER, IDC_DARKTHEME,
+                           IDC_STATUS; IDC_EDIT1 renamed to IDC_TEST_EDIT
+FilterKeysSetter.vcxproj   Theme.* added, manifest wired up, DPI awareness,
+                           phantom wizard headers removed
+res/FilterKeysSetter.manifest  rewritten
+```
+
+## Behaviour that must not change
+
+Verified untouched by this work:
+
+* `SPI_GETFILTERKEYS` / `SPI_SETFILTERKEYS` calls and their `fWinIni` flags
+* `SPIF_UPDATEINIFILE` and `SPIF_SENDCHANGE` driven by the two check boxes
+* Reads from `HKEY_CURRENT_USER\Control Panel\Accessibility\Keyboard Response`
+  (`DelayBeforeAcceptance`, `AutoRepeatDelay`, `AutoRepeatRate`, `BounceTime`, `Flags`)
+* `FKF_*` flag composition in `GetFlagsVal()` / `SetFlags()`
+* The Current / Registry / Keyboard / Default / Original presets
+* The 20000 ms validation limits
+
+The theme preference is stored in a **separate** key,
+`HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme` (`REG_DWORD`, 0 = light,
+1 = dark), so it can never collide with the accessibility settings.
+
+## Migration checklist
+
+1. Pull the branch and open `FilterKeysSetter.sln` in Visual Studio 2022.
+2. Confirm the *Desktop development with C++* workload includes
+   **MFC for latest v143 build tools** — the build fails without it.
+3. Build `Release|x64` and `Release|Win32`.
+4. If `TBS_NOTICKS` fails to resolve, check that `#include <commctrl.h>` is
+   still present near the top of `FilterKeysSetter.rc`; the Visual Studio
+   resource editor drops it if it rewrites the file.
+5. Open the dialog editor once and eyeball `IDD_FILTERKEYSSETTER_DIALOG`. The
+   tightest control is the multi-line radio button at 108 × 24 units.
+6. Delete any stale `Debug/`, `Release/`, `x64/` output; the manifest is now
+   embedded and old binaries will not pick it up.
+
+## Testing checklist
+
+**Functional**
+
+- [ ] Each of the five presets loads plausible values
+- [ ] Switching the two radio buttons enables/disables the right fields *and* sliders
+- [ ] Apply writes the settings; the status line updates to match
+- [ ] OK applies and closes; Cancel discards
+- [ ] A value above 20000 is still rejected with the existing message box
+- [ ] *Save to registry* survives a sign-out; without it the change is session-only
+- [ ] `Control Panel\Accessibility\Keyboard Response` holds the expected values afterwards
+
+**Sliders**
+
+- [ ] Dragging the delay slider updates the edit box and vice versa
+- [ ] Dragging the rate slider also updates the characters-per-second readout
+- [ ] Typing a value beyond the slider range clamps the thumb but keeps the typed value
+- [ ] No flicker or infinite update loop between slider and edit box
+
+**Visual**
+
+- [ ] Gradient is smooth, no banding, no seam behind the sliders
+- [ ] Slider thumb is cyan when enabled, grey when disabled
+- [ ] No black-on-dark or white-on-white text anywhere
+- [ ] Title bar is dark in the dark theme, light in the light theme
+- [ ] About box matches the main window
+- [ ] Theme switch takes effect immediately and survives a restart
+
+**DPI and themes**
+
+- [ ] 100 %, 125 %, 150 %, 200 % scaling — text crisp, nothing clipped
+- [ ] Light theme looks like a native Windows dialog
+- [ ] Turning Windows high contrast on while running drops the custom palette
+- [ ] The *Dark theme* check box is disabled while high contrast is active
+
+**Accessibility**
+
+- [ ] Tab reaches every control; focus is always visible
+- [ ] Narrator announces a meaningful name for each edit box and both sliders
+- [ ] Sliders respond to arrow keys, Page Up/Down, Home/End
+- [ ] Tooltips appear on hover and stay long enough to read
+- [ ] Accesskeys and Esc/Enter still behave
+
+## Known trade-offs
+
+**Check boxes, radio buttons and group boxes look flat in the dark theme.**
+They have to be detached from the visual style with
+`SetWindowTheme(hwnd, L"", L"")`, because the theme engine paints its own text
+in black and ignores `WM_CTLCOLORSTATIC` entirely. Classic rendering is the
+price of readable labels. Push buttons keep their native look on purpose.
+
+**System DPI, not per-monitor.** Per-monitor v2 requires handling
+`WM_DPICHANGED` and rebuilding fonts and layout at runtime, which this dialog
+does not do. Declaring it without that work looks worse than system awareness:
+the window would be re-laid out at the wrong scale when moved between monitors.
+
+**The dialog is about 15 % larger.** Dialog units are derived from the font
+metrics, so Segoe UI 9 pt scales the whole layout. This is expected, and the
+reason the geometry was left proportional instead of being hand-tuned.
+
+## Rollback
+
+Each step is a separate commit, so a single change can be reverted on its own:
+
+| Commit | Change |
+|---|---|
+| `8cf69e8` | Segoe UI font, DPI awareness, manifest |
+| `bd0907d` | Dark theme, sliders, status line |
+| `3f61620` | About box theming, tooltips, flags readout |
+
+Full rollback of the UI work:
+
+```cmd
+git revert --no-commit 3f61620 bd0907d 8cf69e8
+git commit -m "Revert the 1.11 UI upgrade"
+```
+
+To keep the code but disable the dark theme for everyone, make
+`CTheme::LoadPreference()` return `ThemeMode::Light`; nothing else depends on
+the mode. Users can also clear the preference themselves by deleting
+`HKEY_CURRENT_USER\Software\FilterKeysSetter`.
+
+## Still open
+
+`.github/workflows/build.yml` replaces the unusable CMake-on-Ubuntu starter
+workflow with MSBuild on `windows-2022`, but it could not be pushed: GitHub
+rejects workflow files from an app without the `workflows` permission. Until it
+lands, none of the above has been compiled in CI.
