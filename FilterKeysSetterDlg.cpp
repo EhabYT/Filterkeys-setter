@@ -1,4 +1,4 @@
-// FilterKeysSetterDlg.cpp : implementation file
+﻿// FilterKeysSetterDlg.cpp : implementation file
 //
 
 #include "pch.h"
@@ -47,10 +47,25 @@ END_MESSAGE_MAP()
 
 CFilterKeysSetterDlg::CFilterKeysSetterDlg(CWnd* pParent /*=NULL*/)
 	: CDialog(CFilterKeysSetterDlg::IDD, pParent)
+	, m_nMode(0)
+	, m_nWait(1000)
+	, m_nDelay(1000)
+	, m_nRepeat(500)
+	, m_nBounce(0)
+	, m_bOn(FALSE)
+	, m_bAvailable(FALSE)
+	, m_bIndicator(FALSE)
+	, m_bClick(FALSE)
+	, m_bHotKeyActive(FALSE)
+	, m_bConfirmHotKey(FALSE)
+	, m_bHotKeySound(FALSE)
 	, m_bUpdateIniFile(FALSE)
 	, m_bSendChange(FALSE)
+	, m_bSyncingSlider(false)
 {
+	ZeroMemory(&m_fkOriginal, sizeof(m_fkOriginal));
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
+	m_theme.SetMode(CTheme::LoadPreference());
 }
 
 void CFilterKeysSetterDlg::ErrorBox(const TCHAR* msg)
@@ -93,6 +108,11 @@ void CFilterKeysSetterDlg::DoDataExchange(CDataExchange* pDX)
 
 	DDX_Control(pDX, IDC_FLAGVAL, m_staticFlagVal);
 	DDX_Control(pDX, IDC_CHARS_PER_SEC, m_staticCharsPerSec);
+	DDX_Control(pDX, IDC_STATUS, m_staticStatus);
+
+	DDX_Control(pDX, IDC_DELAY_SLIDER, m_sliderDelay);
+	DDX_Control(pDX, IDC_REPEAT_SLIDER, m_sliderRepeat);
+	DDX_Control(pDX, IDC_DARKTHEME, m_chkDarkTheme);
 }
 
 BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
@@ -116,6 +136,13 @@ BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
 	ON_BN_CLICKED(IDC_SET_CURRENT, OnBnClickedSetCurrent)
 	ON_BN_CLICKED(IDC_APPLY, OnBnClickedApply)
 	ON_BN_CLICKED(IDC_SET_ORIGINAL, OnBnClickedSetOriginal)
+	ON_BN_CLICKED(IDC_DARKTHEME, OnBnClickedDarkTheme)
+	ON_EN_CHANGE(IDC_DELAY_EDIT, OnEnChangeDelayEdit)
+	ON_WM_ERASEBKGND()
+	ON_WM_CTLCOLOR()
+	ON_WM_HSCROLL()
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_DELAY_SLIDER, OnCustomDrawSlider)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_REPEAT_SLIDER, OnCustomDrawSlider)
 END_MESSAGE_MAP()
 
 
@@ -153,10 +180,235 @@ BOOL CFilterKeysSetterDlg::OnInitDialog()
 	m_fkOriginal.cbSize = sizeof(FILTERKEYS);
 	BOOL ok = SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &m_fkOriginal, 0);
 
+	// Sliders have to exist before the first SetValues() call feeds them.
+	InitSliders();
+
+	m_chkDarkTheme.SetCheck(m_theme.IsDark() ? BST_CHECKED : BST_UNCHECKED);
+	ApplyTheme();
+
 	// Init from current FilterKeys settings...
 	OnBnClickedSetCurrent();
 
 	return TRUE;  // return TRUE  unless you set the focus to a control
+}
+
+// Slider ranges are the practically useful part of the 0..20000 ms the API
+// accepts; the edit box stays authoritative for values outside that window.
+void CFilterKeysSetterDlg::InitSliders()
+{
+	m_sliderDelay.SetRange(0, 2000, TRUE);
+	m_sliderDelay.SetPageSize(100);
+	m_sliderDelay.SetLineSize(10);
+
+	m_sliderRepeat.SetRange(10, 1000, TRUE);
+	m_sliderRepeat.SetPageSize(50);
+	m_sliderRepeat.SetLineSize(5);
+
+	// A trackbar has no visible caption, so its window text is free to carry
+	// the accessible name that screen readers announce.
+	m_sliderDelay.SetWindowText(_T("Repeat delay in milliseconds"));
+	m_sliderRepeat.SetWindowText(_T("Repeat rate in milliseconds"));
+}
+
+void CFilterKeysSetterDlg::SyncSliderFromEdit(CSliderCtrl& slider, CEdit& edit)
+{
+	if (m_bSyncingSlider
+	    || !::IsWindow(slider.GetSafeHwnd()) || !::IsWindow(edit.GetSafeHwnd())) {
+		return;
+	}
+	CString s;
+	edit.GetWindowText(s);
+	int value = _wtoi(s);
+
+	int lower = 0, upper = 0;
+	slider.GetRange(lower, upper);
+	if (value < lower) value = lower;
+	if (value > upper) value = upper;
+
+	m_bSyncingSlider = true;
+	slider.SetPos(value);
+	m_bSyncingSlider = false;
+}
+
+void CFilterKeysSetterDlg::SyncEditFromSlider(CSliderCtrl& slider, CEdit& edit)
+{
+	if (m_bSyncingSlider
+	    || !::IsWindow(slider.GetSafeHwnd()) || !::IsWindow(edit.GetSafeHwnd())) {
+		return;
+	}
+	CString s;
+	s.Format(_T("%d"), slider.GetPos());
+
+	m_bSyncingSlider = true;
+	edit.SetWindowText(s);
+	m_bSyncingSlider = false;
+}
+
+void CFilterKeysSetterDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
+{
+	if (pScrollBar == (CScrollBar*)&m_sliderDelay) {
+		SyncEditFromSlider(m_sliderDelay, m_editDelay);
+	}
+	else if (pScrollBar == (CScrollBar*)&m_sliderRepeat) {
+		SyncEditFromSlider(m_sliderRepeat, m_editRepeat);
+		UpdateCharsPerSec();
+	}
+	CDialog::OnHScroll(nSBCode, nPos, pScrollBar);
+}
+
+void CFilterKeysSetterDlg::OnEnChangeDelayEdit()
+{
+	SyncSliderFromEdit(m_sliderDelay, m_editDelay);
+}
+
+void CFilterKeysSetterDlg::OnBnClickedDarkTheme()
+{
+	const ThemeMode mode = (m_chkDarkTheme.GetCheck() == BST_CHECKED)
+		? ThemeMode::Dark : ThemeMode::Light;
+	m_theme.SetMode(mode);
+	CTheme::SavePreference(mode);
+	ApplyTheme();
+}
+
+void CFilterKeysSetterDlg::ApplyTheme()
+{
+	m_theme.ApplyToTitleBar(GetSafeHwnd());
+	ApplyThemeToChildren();
+	Invalidate(TRUE);
+	UpdateWindow();
+}
+
+void CFilterKeysSetterDlg::ApplyThemeToChildren()
+{
+	for (CWnd* pChild = GetWindow(GW_CHILD); pChild != NULL;
+	     pChild = pChild->GetWindow(GW_HWNDNEXT)) {
+		m_theme.ApplyToControl(pChild->GetSafeHwnd());
+	}
+}
+
+// The trackbars are the one place where the cyan accent really carries the
+// visual identity, so they are drawn by hand in dark mode.
+void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
+	*pResult = CDRF_DODEFAULT;
+
+	if (!m_theme.IsDark() || pcd == NULL) {
+		return;
+	}
+
+	CDC* pDC = CDC::FromHandle(pcd->hdc);
+	if (pDC == NULL) {
+		return;
+	}
+
+	const ThemePalette& pal = m_theme.Palette();
+
+	switch (pcd->dwDrawStage) {
+	case CDDS_PREPAINT:
+	{
+		// WM_CTLCOLORSTATIC hands the trackbar a hollow brush, so nothing has
+		// erased its background. Reproduce the slice of the dialog gradient
+		// that sits behind this control.
+		CWnd* pSlider = CWnd::FromHandle(pcd->hdr.hwndFrom);
+		if (pSlider != NULL) {
+			CRect rcClient;
+			GetClientRect(&rcClient);
+
+			CRect rcSlider;
+			pSlider->GetWindowRect(&rcSlider);
+			ScreenToClient(&rcSlider);
+
+			CRect full(rcClient);
+			full.OffsetRect(-rcSlider.left, -rcSlider.top);
+
+			m_theme.PaintBackgroundSlice(*pDC, full, CRect(pcd->rc));
+		}
+		*pResult = CDRF_NOTIFYITEMDRAW;
+		return;
+	}
+
+	case CDDS_ITEMPREPAINT:
+	{
+		const bool enabled = (pcd->uItemState & CDIS_DISABLED) == 0;
+		CRect rc(pcd->rc);
+
+		if (pcd->dwItemSpec == TBCD_CHANNEL) {
+			// A slim recessed track.
+			rc.DeflateRect(0, (rc.Height() > 4) ? (rc.Height() - 4) / 2 : 0);
+			pDC->FillSolidRect(rc, pal.clrSurface);
+			pDC->Draw3dRect(rc, pal.clrBackTop, pal.clrBackTop);
+			*pResult = CDRF_SKIPDEFAULT;
+			return;
+		}
+
+		if (pcd->dwItemSpec == TBCD_THUMB) {
+			const COLORREF clrThumb = enabled ? pal.clrAccent : pal.clrTextDisabled;
+			pDC->FillSolidRect(rc, clrThumb);
+			pDC->Draw3dRect(rc, pal.clrText, pal.clrText);
+			*pResult = CDRF_SKIPDEFAULT;
+			return;
+		}
+
+		if (pcd->dwItemSpec == TBCD_TICS) {
+			*pResult = CDRF_SKIPDEFAULT;
+			return;
+		}
+		return;
+	}
+
+	default:
+		return;
+	}
+}
+
+BOOL CFilterKeysSetterDlg::OnEraseBkgnd(CDC* pDC)
+{
+	if (!m_theme.IsDark()) {
+		return CDialog::OnEraseBkgnd(pDC);
+	}
+	CRect rect;
+	GetClientRect(&rect);
+	m_theme.PaintBackground(*pDC, rect);
+	return TRUE;
+}
+
+HBRUSH CFilterKeysSetterDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	if (!m_theme.IsDark()) {
+		return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
+	}
+
+	const ThemePalette& pal = m_theme.Palette();
+	const int id = (pWnd != NULL) ? pWnd->GetDlgCtrlID() : 0;
+
+	// A disabled edit box reports itself as CTLCOLOR_STATIC, so it has to be
+	// recognised by id rather than by message.
+	const bool isEditBox = (id == IDC_WAIT_EDIT || id == IDC_DELAY_EDIT
+	                     || id == IDC_REPEAT_EDIT || id == IDC_BOUNCE_EDIT
+	                     || id == IDC_TEST_EDIT);
+
+	if (nCtlColor == CTLCOLOR_EDIT || isEditBox) {
+		const bool enabled = (pWnd != NULL) && pWnd->IsWindowEnabled();
+		pDC->SetBkColor(pal.clrSurface);
+		pDC->SetTextColor(enabled ? pal.clrText : pal.clrTextDisabled);
+		return m_theme.SurfaceBrush();
+	}
+
+	if (nCtlColor == CTLCOLOR_STATIC || nCtlColor == CTLCOLOR_BTN) {
+		// Secondary colour for the two computed read-only readouts.
+		const bool secondary = (id == IDC_CHARS_PER_SEC || id == IDC_FLAGVAL
+		                     || id == IDC_STATUS);
+		pDC->SetTextColor(secondary ? pal.clrTextSecondary : pal.clrText);
+		pDC->SetBkMode(TRANSPARENT);
+		return (HBRUSH)::GetStockObject(HOLLOW_BRUSH);
+	}
+
+	if (nCtlColor == CTLCOLOR_DLG) {
+		return m_theme.BackBrush();
+	}
+
+	return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 }
 
 void CFilterKeysSetterDlg::OnSysCommand(UINT nID, LPARAM lParam)
@@ -402,18 +654,53 @@ void CFilterKeysSetterDlg::UpdateControls()
 	UpdateData(TRUE);
 	UpdateFlagVal();
 	UpdateCharsPerSec();
-	if (m_nMode == 0) {
-		m_editWait.EnableWindow(TRUE);
-		m_editDelay.EnableWindow(TRUE);
-		m_editRepeat.EnableWindow(TRUE);
-		m_editBounce.EnableWindow(FALSE);
+
+	const BOOL bRepeatMode = (m_nMode == 0) ? TRUE : FALSE;
+
+	m_editWait.EnableWindow(bRepeatMode);
+	m_editDelay.EnableWindow(bRepeatMode);
+	m_editRepeat.EnableWindow(bRepeatMode);
+	m_editBounce.EnableWindow(!bRepeatMode);
+
+	m_sliderDelay.EnableWindow(bRepeatMode);
+	m_sliderRepeat.EnableWindow(bRepeatMode);
+
+	SyncSliderFromEdit(m_sliderDelay, m_editDelay);
+	SyncSliderFromEdit(m_sliderRepeat, m_editRepeat);
+
+	UpdateStatus();
+}
+
+// Shows what Windows is doing right now, which is not necessarily what the
+// dialog has in its edit boxes.
+void CFilterKeysSetterDlg::UpdateStatus()
+{
+	if (!::IsWindow(m_staticStatus.GetSafeHwnd())) {
+		return;
+	}
+
+	FILTERKEYS fk = { sizeof(FILTERKEYS) };
+	CString s;
+
+	if (SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &fk, 0)) {
+		if (fk.dwFlags & FKF_FILTERKEYSON) {
+			if (fk.iBounceMSec) {
+				s.Format(_T("Active: ignoring repeats faster than %d ms"), fk.iBounceMSec);
+			}
+			else {
+				s.Format(_T("Active: ignore under %d ms, delay %d ms, repeat %d ms"),
+				         fk.iWaitMSec, fk.iDelayMSec, fk.iRepeatMSec);
+			}
+		}
+		else {
+			s = _T("FilterKeys is currently off");
+		}
 	}
 	else {
-		m_editWait.EnableWindow(FALSE);
-		m_editDelay.EnableWindow(FALSE);
-		m_editRepeat.EnableWindow(FALSE);
-		m_editBounce.EnableWindow(TRUE);
+		s = _T("Current FilterKeys state could not be read");
 	}
+
+	m_staticStatus.SetWindowText(s);
 }
 
 void CFilterKeysSetterDlg::UpdateCharsPerSec()
@@ -428,6 +715,7 @@ void CFilterKeysSetterDlg::UpdateCharsPerSec()
 		s = "(0 per second)";
 	}
 	m_staticCharsPerSec.SetWindowText(s);
+	SyncSliderFromEdit(m_sliderRepeat, m_editRepeat);
 }
 
 void CFilterKeysSetterDlg::OnBnClickedApply()
@@ -436,6 +724,7 @@ void CFilterKeysSetterDlg::OnBnClickedApply()
 		return;
 	}
 	SaveSettings();
+	UpdateStatus();
 }
 
 bool CFilterKeysSetterDlg::SaveSettings()

@@ -8,6 +8,7 @@
 // Generated from the TEXTINCLUDE 2 resource.
 //
 #include "afxres.h"
+#include <commctrl.h>
 
 /////////////////////////////////////////////////////////////////////////////
 #undef APSTUDIO_READONLY_SYMBOLS
@@ -35,20 +36,41 @@ BEGIN
     DEFPUSHBUTTON   "OK",IDOK,178,7,50,16,WS_GROUP
 END
 
-IDD_FILTERKEYSSETTER_DIALOG DIALOGEX 0, 0, 228, 265
+IDD_FILTERKEYSSETTER_DIALOG DIALOGEX 0, 0, 228, 322
 STYLE DS_SETFONT | DS_MODALFRAME | WS_POPUP | WS_VISIBLE | WS_CAPTION
 EXSTYLE WS_EX_APPWINDOW
 CAPTION "FilterKeys Setter"
 FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
+    // The two radio buttons must stay adjacent in z-order: DDX_Radio walks the
+    // controls following IDC_IGNORE_QUICK until it meets the next WS_GROUP.
     CONTROL         "Ignore quick keystrokes and/or set the repeat rate",IDC_IGNORE_QUICK,
                     "Button",BS_AUTORADIOBUTTON | BS_MULTILINE | WS_GROUP | WS_TABSTOP,12,18,108,24
     CONTROL         "Ignore keystrokes repeated faster than:",IDC_IGNORE_REPEATED,
-                    "Button",BS_AUTORADIOBUTTON | BS_MULTILINE,12,120,108,18
+                    "Button",BS_AUTORADIOBUTTON | BS_MULTILINE,12,156,108,18
+
+    // Every input is preceded by its label so that screen readers derive the
+    // accessible name from it.
+    RTEXT           "Ignore under:",IDC_STATIC,24,48,48,12,SS_CENTERIMAGE
     EDITTEXT        IDC_WAIT_EDIT,78,48,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
+    RTEXT           "ms",IDC_STATIC,108,48,12,12,SS_CENTERIMAGE
+
+    RTEXT           "Repeat delay:",IDC_STATIC,24,66,48,12,SS_CENTERIMAGE
     EDITTEXT        IDC_DELAY_EDIT,78,66,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
-    EDITTEXT        IDC_REPEAT_EDIT,78,84,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
-    EDITTEXT        IDC_BOUNCE_EDIT,78,144,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
+    RTEXT           "ms",IDC_STATIC,108,66,12,12,SS_CENTERIMAGE
+    CONTROL         "",IDC_DELAY_SLIDER,"msctls_trackbar32",TBS_NOTICKS | WS_TABSTOP,24,82,96,14
+
+    RTEXT           "Repeat rate:",IDC_STATIC,24,100,48,12,SS_CENTERIMAGE
+    EDITTEXT        IDC_REPEAT_EDIT,78,100,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
+    RTEXT           "ms",IDC_STATIC,108,100,12,12,SS_CENTERIMAGE
+    CONTROL         "",IDC_REPEAT_SLIDER,"msctls_trackbar32",TBS_NOTICKS | WS_TABSTOP,24,116,96,14
+
+    RTEXT           "cps",IDC_CHARS_PER_SEC,42,134,78,12,SS_CENTERIMAGE
+
+    RTEXT           "Bounce time:",IDC_STATIC,24,180,48,12,SS_CENTERIMAGE
+    EDITTEXT        IDC_BOUNCE_EDIT,78,180,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
+    RTEXT           "ms",IDC_STATIC,108,180,12,12,SS_CENTERIMAGE
+
     CONTROL         "On",IDC_ON,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,18,72,12
     CONTROL         "Available",IDC_AVAILABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,30,72,12
     CONTROL         "Use shortcut",IDC_HOTKEYACTIVE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,42,72,12
@@ -56,31 +78,33 @@ BEGIN
     CONTROL         "Activation sound",IDC_HOTKEYSOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,66,72,12
     CONTROL         "Show status",IDC_INDICATOR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,78,72,12
     CONTROL         "Key click",IDC_CLICK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,90,72,12
+    LTEXT           "flagval",IDC_FLAGVAL,144,102,72,12,SS_CENTERIMAGE
+
     CONTROL         "Save to registry",IDC_UPDATEINIFILE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,138,66,12
     CONTROL         "Broadcast change",IDC_SENDCHANGE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,150,72,12
-    PUSHBUTTON      "Current",IDC_SET_CURRENT,12,186,36,12
-    PUSHBUTTON      "Registry",IDC_SET_REGISTRY,54,186,36,12
-    PUSHBUTTON      "Keyboard",IDC_SET_NORMAL,96,186,36,12
-    PUSHBUTTON      "Default",IDC_SET_DEFAULTS,138,186,36,12
-    PUSHBUTTON      "Original",IDC_SET_ORIGINAL,180,186,36,12
-    EDITTEXT        IDC_EDIT1,12,222,204,12,ES_AUTOHSCROLL
-    DEFPUSHBUTTON   "OK",IDOK,66,246,48,14
-    PUSHBUTTON      "Cancel",IDCANCEL,120,246,48,14
-    PUSHBUTTON      "Apply",IDC_APPLY,174,246,48,14
-    RTEXT           "Ignore under:",IDC_STATIC,24,48,48,12,SS_CENTERIMAGE
-    RTEXT           "ms",IDC_STATIC,108,48,12,12,SS_CENTERIMAGE
-    RTEXT           "Repeat delay:",IDC_STATIC,24,66,48,12,SS_CENTERIMAGE
-    RTEXT           "ms",IDC_STATIC,108,66,12,12,SS_CENTERIMAGE
-    RTEXT           "Repeat rate:",IDC_STATIC,24,84,48,12,SS_CENTERIMAGE
-    RTEXT           "ms",IDC_STATIC,108,84,12,12,SS_CENTERIMAGE
-    RTEXT           "ms",IDC_STATIC,108,144,12,12,SS_CENTERIMAGE
-    LTEXT           "flagval",IDC_FLAGVAL,144,102,72,12,SS_CENTERIMAGE
+
+    CONTROL         "Dark theme",IDC_DARKTHEME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,186,72,12
+
+    PUSHBUTTON      "Current",IDC_SET_CURRENT,12,221,36,14
+    PUSHBUTTON      "Registry",IDC_SET_REGISTRY,54,221,36,14
+    PUSHBUTTON      "Keyboard",IDC_SET_NORMAL,96,221,36,14
+    PUSHBUTTON      "Default",IDC_SET_DEFAULTS,138,221,36,14
+    PUSHBUTTON      "Original",IDC_SET_ORIGINAL,180,221,36,14
+
+    EDITTEXT        IDC_TEST_EDIT,12,258,204,13,ES_AUTOHSCROLL
+
+    LTEXT           "status",IDC_STATUS,6,282,216,12,SS_CENTERIMAGE | SS_ENDELLIPSIS
+
+    DEFPUSHBUTTON   "OK",IDOK,66,300,48,14
+    PUSHBUTTON      "Cancel",IDCANCEL,120,300,48,14
+    PUSHBUTTON      "Apply",IDC_APPLY,174,300,48,14
+
+    GROUPBOX        "Settings",IDC_STATIC,6,6,126,198
     GROUPBOX        "Flags",IDC_STATIC,138,6,84,114
     GROUPBOX        "When applied",IDC_STATIC,138,126,84,42
-    GROUPBOX        "Settings",IDC_STATIC,6,6,126,162
-    RTEXT           "cps",IDC_CHARS_PER_SEC,54,102,66,12,SS_CENTERIMAGE
-    GROUPBOX        "Load settings",IDC_STATIC,6,174,216,30
-    GROUPBOX        "Test area (click Apply first)",IDC_STATIC,6,210,216,30
+    GROUPBOX        "Appearance",IDC_STATIC,138,174,84,30
+    GROUPBOX        "Load settings",IDC_STATIC,6,210,216,30
+    GROUPBOX        "Test area (click Apply first)",IDC_STATIC,6,246,216,30
 END
 
 
@@ -184,6 +208,7 @@ END
 2 TEXTINCLUDE 
 BEGIN
     "#include ""afxres.h""\r\n"
+    "#include <commctrl.h>\r\n"
     "\0"
 END
 

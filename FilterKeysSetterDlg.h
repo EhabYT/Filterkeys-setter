@@ -1,8 +1,9 @@
-// FilterKeysSetterDlg.h : header file
+﻿// FilterKeysSetterDlg.h : header file
 //
 
 #pragma once
 #include "afxwin.h"
+#include "Theme.h"
 
 
 // CFilterKeysSetterDlg dialog
@@ -30,6 +31,16 @@ protected:
 	void UpdateFlagVal();
 	void UpdateCharsPerSec();
 	void UpdateControls();
+	void UpdateStatus();
+
+	// Theming
+	void ApplyTheme();
+	void ApplyThemeToChildren();
+
+	// Slider <-> edit box synchronisation
+	void InitSliders();
+	void SyncSliderFromEdit(CSliderCtrl& slider, CEdit& edit);
+	void SyncEditFromSlider(CSliderCtrl& slider, CEdit& edit);
 
 	bool SaveSettings();
 
@@ -52,6 +63,12 @@ protected:
 	afx_msg void OnBnClickedSetDefaults();
 	afx_msg void OnBnClickedSetOriginal();
 	afx_msg void OnBnClickedApply();
+	afx_msg void OnBnClickedDarkTheme();
+	afx_msg void OnEnChangeDelayEdit();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
+	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
+	afx_msg void OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult);
 
 	DECLARE_MESSAGE_MAP()
 
@@ -87,6 +104,17 @@ protected:
 
 	CStatic m_staticFlagVal;
 	CStatic m_staticCharsPerSec;
+	CStatic m_staticStatus;
+
+	CSliderCtrl m_sliderDelay;
+	CSliderCtrl m_sliderRepeat;
+
+	CButton m_chkDarkTheme;
+
+	CTheme m_theme;
+
+	// Guards against the slider and the edit box updating each other in a loop.
+	bool m_bSyncingSlider;
 
 public:
 };
