@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="res/logo.png" alt="FilterKeys Setter logo" width="128" height="128">
+</p>
+
 # Filterkeys setter
 
 Original version 1.02 from Soarer's article [FilterKeys Setter... for a faster key repeat (in Windows)](https://geekhack.org/index.php?topic=41881.0).
