@@ -105,6 +105,49 @@ python tools\check-dialog-layout.py
 It found three undersized check boxes and the *Keyboard* preset button after the
 font change; all four have been widened.
 
+## Toolchain: Visual Studio 2022 and 2026
+
+Visual Studio 2026 (18.x) ships the **v145** platform toolset and no longer
+carries v143. A project with a hard-coded `<PlatformToolset>v143</PlatformToolset>`
+fails there before a single file is compiled:
+
+```
+error MSB8020: The build tools for v143 (Platform Toolset = 'v143')
+cannot be found.
+```
+
+Rather than move the project to v145 and lock out VS 2022, the toolset is now
+resolved from the Visual Studio that is running the build:
+
+```xml
+<PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+<PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
+```
+
+`$(DefaultPlatformToolset)` is set by `Microsoft.Cpp.Default.props`, which is
+imported above the configuration property groups, so it is already available:
+v143 under VS 2022, v145 under VS 2026. The second line is a fallback for
+exotic environments where the property is empty. Both stay out of the way of
+`/p:PlatformToolset=...` on the command line.
+
+Two things to know when building with VS 2026:
+
+* **Install the MFC component for v145** (*C++ MFC for latest v145 build tools*).
+  It is not part of the *Desktop development with C++* workload; without it the
+  build stops at `afxwin.h`.
+* **Do not accept *Retarget solution*.** It writes a fixed `v145` into the
+  `.vcxproj` and undoes the conditional above. Choose *Install missing platform
+  toolset* instead, or simply dismiss the dialog — the project builds as is.
+
+`ConformanceMode` is now pinned to `false` in a global `ItemDefinitionGroup`.
+It was already off by omission, but the v145 toolset is a good deal stricter
+and a future template default flipping to `/permissive-` would bury real
+diagnostics under conformance errors in this 2013-era MFC code. The decision is
+recorded in the project file instead of depending on a default.
+
+The setup project needs *Microsoft Visual Studio Installer Projects* **3.0.0 or
+newer** under VS 2026; older builds of the extension crash on it.
+
 ## Testing checklist
 
 **Functional**
@@ -205,6 +248,8 @@ the mode. Users can also clear the preference themselves by deleting
 ## Still open
 
 `.github/workflows/build.yml` replaces the unusable CMake-on-Ubuntu starter
-workflow with MSBuild on `windows-2022`, but it could not be pushed: GitHub
-rejects workflow files from an app without the `workflows` permission. Until it
-lands, none of the above has been compiled in CI.
+workflow with a dialog-layout check on Ubuntu plus MSBuild on both
+`windows-2022` (VS 2022, v143) and `windows-2025` (VS 2026, v145), for `Win32`
+and `x64`. It could not be pushed: GitHub rejects workflow files from an app
+without the `workflows` permission. Until it lands, none of the above has been
+compiled in CI.

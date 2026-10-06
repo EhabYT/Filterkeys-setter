@@ -14,7 +14,8 @@ Original version 1.02 from Soarer's article [FilterKeys Setter... for a faster k
 * 1.11 2026-10-06 Dark theme with repeat sliders, tooltips for every setting,
   Segoe UI dialog font, system DPI awareness, new application icon and logo,
   CI build workflow for Win32 and x64; MFC Feature Pack headers dropped,
-  installer upgraded to a proper major upgrade
+  installer upgraded to a proper major upgrade, builds with both Visual Studio
+  2022 and Visual Studio 2026
 * 1.10 2024-01-28 No changes - Visual Studio 2022 build
 * 1.02 2013-10-30 Soarer's release
 
@@ -32,15 +33,32 @@ remains authoritative for values outside the slider range.
 
 # Building
 
-The project is an MFC desktop application built with the Visual Studio 2022 toolset (`v143`).
+The project is an MFC desktop application. It builds with **Visual Studio 2022
+and Visual Studio 2026** -- the platform toolset is not hard-coded, it resolves
+to whichever toolset the running Visual Studio provides (`v143` in 2022, `v145`
+in 2026, which no longer ships `v143`).
 
 * **Visual Studio:** open `FilterKeysSetter.sln` and build the `Release` configuration for `x86` or `x64`.
-  Requires the *Desktop development with C++* workload including *MFC for latest v143 build tools*.
+  Requires the *Desktop development with C++* workload **plus the matching MFC component**, which is
+  not part of that workload by default and is the usual cause of a failing build at `afxwin.h`:
+  * VS 2026: *C++ MFC for latest v145 build tools (x86 & x64)*
+  * VS 2022: *C++ MFC for latest v143 build tools (x86 & x64)*
+
+  Decline the *Retarget solution* prompt in VS 2026, or answer it with *Install missing platform
+  toolset*: retargeting writes a fixed `<PlatformToolset>v145</PlatformToolset>` into the project
+  and would break the build for anyone still on VS 2022.
 * **Command line:**
 
   ```cmd
   msbuild FilterKeysSetter.sln /p:Configuration=Release /p:Platform=x64
   ```
+
+  Add `/p:PlatformToolset=v143` to pin an older toolset when several are installed side by side.
+
+The `FilterKeysSetter.Setup` project needs the free
+[Microsoft Visual Studio Installer Projects](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)
+extension, version 3.0.0 or newer for VS 2026. Without it the solution still opens and the
+application still builds; only the `.vdproj` fails to load.
 
 Every push and pull request is built for both `Win32` and `x64` by the
 [build workflow](.github/workflows/build.yml), which publishes the resulting

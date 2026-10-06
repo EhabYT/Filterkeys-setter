@@ -29,14 +29,22 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -44,14 +52,22 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -87,6 +103,12 @@
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
   <ItemDefinitionGroup>
+    <ClCompile>
+      <!-- Keep /permissive- off. This is 2013-era MFC code; the stricter
+           two-phase lookup of the v145 toolset would bury the real
+           diagnostics under conformance errors in headers we do not own. -->
+      <ConformanceMode>false</ConformanceMode>
+    </ClCompile>
     <Manifest>
       <!-- Declare system DPI awareness so the dialog is rendered crisply instead
            of being bitmap-stretched by Windows on displays scaled above 100%. -->
