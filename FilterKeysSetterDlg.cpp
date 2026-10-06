@@ -5,7 +5,6 @@
 #include "FilterKeysSetter.h"
 #include "FilterKeysSetterDlg.h"
 #include <math.h>
-#include ".\filterkeyssetterdlg.h"
 
 #ifdef _DEBUG
 #define new DEBUG_NEW

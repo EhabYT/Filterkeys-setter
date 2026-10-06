@@ -11,30 +11,14 @@
 // turns off MFC's hiding of some common and often safely ignored warning messages
 #define _AFX_ALL_WARNINGS
 
+// This is a plain dialog application. It uses CWinApp, CDialog and the common
+// controls, and nothing else -- so the wizard's afxext.h, afxdisp.h, afxdtctl.h
+// and afxcontrolbars.h (the MFC Feature Pack: ribbons, docking panes, property
+// grids) are not pulled in. They cost compile time and code size for features
+// this program does not have.
 #include <afxwin.h>         // MFC core and standard components
-#include <afxext.h>         // MFC extensions
-
-
-#include <afxdisp.h>        // MFC Automation classes
-
-
-
-#ifndef _AFX_NO_OLE_SUPPORT
-#include <afxdtctl.h>           // MFC support for Internet Explorer 4 Common Controls
-#endif
-#ifndef _AFX_NO_AFXCMN_SUPPORT
-#include <afxcmn.h>             // MFC support for Windows Common Controls
-#endif // _AFX_NO_AFXCMN_SUPPORT
-
-#include <afxcontrolbars.h>     // MFC support for ribbons and control bars
-
-
-
-
-
-
-
-
+#include <afxcmn.h>         // MFC support for the Windows common controls
+                            // (CSliderCtrl, CToolTipCtrl)
 
 #ifdef _UNICODE
 #if defined _M_IX86
@@ -45,5 +29,3 @@
 #pragma comment(linker,"/manifestdependency:\"type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'\"")
 #endif
 #endif
-
-

@@ -13,7 +13,8 @@ Original version 1.02 from Soarer's article [FilterKeys Setter... for a faster k
 # Version history
 * 1.11 2026-10-06 Dark theme with repeat sliders, tooltips for every setting,
   Segoe UI dialog font, system DPI awareness, new application icon and logo,
-  CI build workflow for Win32 and x64
+  CI build workflow for Win32 and x64; MFC Feature Pack headers dropped,
+  installer upgraded to a proper major upgrade
 * 1.10 2024-01-28 No changes - Visual Studio 2022 build
 * 1.02 2013-10-30 Soarer's release
 

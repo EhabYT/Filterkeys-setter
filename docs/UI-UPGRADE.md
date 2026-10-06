@@ -55,6 +55,10 @@ resource.h                 IDC_DELAY_SLIDER, IDC_REPEAT_SLIDER, IDC_DARKTHEME,
 FilterKeysSetter.vcxproj   Theme.* added, manifest wired up, DPI awareness,
                            phantom wizard headers removed
 res/FilterKeysSetter.manifest  rewritten
+framework.h                trimmed to afxwin.h + afxcmn.h
+FilterKeysSetter.h/.cpp    wizard placeholders removed, real registry key
+FilterKeysSetter.Setup/    version 1.0.11, new ProductCode/PackageCode,
+                           RemovePreviousVersions enabled
 ```
 
 ## Behaviour that must not change
