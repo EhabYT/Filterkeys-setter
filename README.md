@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="res/logo.png" alt="FilterKeys Setter logo" width="128" height="128">
+  <img src="res/logo.png" alt="FilterKeys Setter logo" width="160" height="160">
 </p>
 
 # Filterkeys setter
