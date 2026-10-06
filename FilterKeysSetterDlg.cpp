@@ -225,7 +225,7 @@ BOOL CFilterKeysSetterDlg::OnInitDialog()
 	// Stash current FilterKeys settings...
 	ZeroMemory(&m_fkOriginal, sizeof(m_fkOriginal));
 	m_fkOriginal.cbSize = sizeof(FILTERKEYS);
-	BOOL ok = SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &m_fkOriginal, 0);
+	SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &m_fkOriginal, 0);
 
 	// Sliders have to exist before the first SetValues() call feeds them.
 	InitSliders();
@@ -702,47 +702,49 @@ void CFilterKeysSetterDlg::OnBnClickedSetNormal()
 	SetValues(filter_keys);
 }
 
-static LONG GetDWORDRegKey(HKEY hKey, const WCHAR* strValueName, DWORD& nValue, DWORD nDefaultValue)
-{
-	nValue = nDefaultValue;
-	DWORD dwBufferSize(sizeof(DWORD));
-	DWORD nResult(0);
-	LONG nError = ::RegQueryValueExW(hKey, strValueName, 0, NULL, (LPBYTE)&nResult, &dwBufferSize);
-	if (ERROR_SUCCESS == nError) {
-		nValue = nResult;
-	}
-	return nError;
-}
+// RegQueryValueEx does not promise that a string value is null terminated, and
+// it happily hands back whatever type is actually stored. Both have to be dealt
+// with before the data is used.
 
-static LONG GetBoolRegKey(HKEY hKey, const WCHAR* strValueName, bool& bValue, bool bDefaultValue)
+// Reads a REG_SZ value and always leaves szValue null terminated, falling back
+// to strDefaultValue on any kind of failure.
+static LONG GetStringRegKey(HKEY hKey, const WCHAR* strValueName, WCHAR* szValue,
+                            DWORD cbValue, const WCHAR* strDefaultValue)
 {
-	DWORD nDefValue((bDefaultValue) ? 1 : 0);
-	DWORD nResult(nDefValue);
-	LONG nError = GetDWORDRegKey(hKey, strValueName, nResult, nDefValue);
-	if (ERROR_SUCCESS == nError) {
-		bValue = (nResult != 0) ? true : false;
+	const size_t sizeInWords = cbValue / sizeof(WCHAR);
+	if (szValue == NULL || sizeInWords == 0) {
+		return ERROR_INVALID_PARAMETER;
 	}
-	return nError;
-}
 
-static LONG GetStringRegKey(HKEY hKey, const WCHAR* strValueName, WCHAR* szValue, DWORD cbValue, const WCHAR* strDefaultValue)
-{
-	SIZE_T sizeInWords = cbValue / sizeof(wchar_t);
-	DWORD dwBufferSize = cbValue;
-	ULONG nError = ::RegQueryValueExW(hKey, strValueName, 0, NULL, (LPBYTE)szValue, &dwBufferSize);
-	if (ERROR_SUCCESS != nError) {
-		wcsncpy_s(szValue, sizeInWords, strDefaultValue, sizeInWords);
+	// Leave room to append a terminator the registry may not have stored.
+	DWORD dwType = 0;
+	DWORD dwBufferSize = static_cast<DWORD>((sizeInWords - 1) * sizeof(WCHAR));
+
+	LONG nError = ::RegQueryValueExW(hKey, strValueName, 0, &dwType,
+	                                 reinterpret_cast<LPBYTE>(szValue), &dwBufferSize);
+
+	if (nError == ERROR_SUCCESS && dwType != REG_SZ && dwType != REG_EXPAND_SZ) {
+		nError = ERROR_INVALID_DATA;
 	}
+
+	if (nError == ERROR_SUCCESS) {
+		// dwBufferSize is in bytes and may or may not include a terminator.
+		const size_t written = dwBufferSize / sizeof(WCHAR);
+		szValue[(written < sizeInWords) ? written : (sizeInWords - 1)] = L'\0';
+		return ERROR_SUCCESS;
+	}
+
+	wcsncpy_s(szValue, sizeInWords, strDefaultValue, _TRUNCATE);
 	return nError;
 }
 
 static LONG GetNumericStringRegKey(HKEY hKey, const WCHAR* strValueName, INT& nValue, INT nDefaultValue)
 {
 	nValue = nDefaultValue;
-	WCHAR szBuffer[512];
-	DWORD dwBufferSize = sizeof(szBuffer);
+
+	WCHAR szBuffer[64] = { 0 };
 	LONG nError = GetStringRegKey(hKey, strValueName, szBuffer, sizeof(szBuffer), L"");
-	if (ERROR_SUCCESS == nError) {
+	if (nError == ERROR_SUCCESS) {
 		nValue = _wtoi(szBuffer);
 	}
 	return nError;
@@ -750,10 +752,10 @@ static LONG GetNumericStringRegKey(HKEY hKey, const WCHAR* strValueName, INT& nV
 
 static LONG GetNumericStringRegKey(HKEY hKey, const WCHAR* strValueName, DWORD& nValue, DWORD nDefaultValue)
 {
-	INT iValue;
-	INT iDefaultValue = (INT)nDefaultValue;
-	LONG nError = GetNumericStringRegKey(hKey, strValueName, iValue, iDefaultValue);
-	nValue = iValue;
+	INT iValue = 0;
+	LONG nError = GetNumericStringRegKey(hKey, strValueName, iValue,
+	                                     static_cast<INT>(nDefaultValue));
+	nValue = static_cast<DWORD>(iValue);
 	return nError;
 }
 
@@ -864,7 +866,7 @@ void CFilterKeysSetterDlg::UpdateCharsPerSec()
 		s.Format(_T("(%.1f per second)"), 1000.0 / val);
 	}
 	else {
-		s = "(0 per second)";
+		s = _T("(0 per second)");
 	}
 	m_staticCharsPerSec.SetWindowText(s);
 	SyncSliderFromEdit(m_sliderRepeat, m_editRepeat);

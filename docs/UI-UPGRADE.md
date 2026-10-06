@@ -165,6 +165,21 @@ the window would be re-laid out at the wrong scale when moved between monitors.
 metrics, so Segoe UI 9 pt scales the whole layout. This is expected, and the
 reason the geometry was left proportional instead of being hand-tuned.
 
+## Latent bugs fixed along the way
+
+Not part of the UI work, but found while reading the surrounding code:
+
+* The value members (`m_nWait`, `m_nDelay`, ...) were never initialised, so the
+  first `UpdateData(FALSE)` ran on indeterminate memory.
+* `GetStringRegKey()` relied on `RegQueryValueEx` null terminating its result,
+  which it does not promise. `_wtoi()` could then read past the buffer. The
+  helper now reserves room for a terminator, writes one, and verifies the value
+  type instead of reinterpreting whatever bytes are stored.
+* `GetDWORDRegKey()` and `GetBoolRegKey()` were dead code; both are gone.
+* A narrow string literal was assigned to a `CStringW`.
+* All inputs lacked an accessible name because every label sat at the end of the
+  resource file.
+
 ## Rollback
 
 Each step is a separate commit, so a single change can be reverted on its own:
