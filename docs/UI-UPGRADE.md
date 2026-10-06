@@ -91,6 +91,20 @@ The theme preference is stored in a **separate** key,
 6. Delete any stale `Debug/`, `Release/`, `x64/` output; the manifest is now
    embedded and old binaries will not pick it up.
 
+## Layout check
+
+`tools/check-dialog-layout.py` parses `FilterKeysSetter.rc` and reports controls
+that leave the dialog, overlap each other, poke out of their group box, or carry
+a caption too long for their width at Segoe UI 9 pt. Run it after any change to
+the resource:
+
+```cmd
+python tools\check-dialog-layout.py
+```
+
+It found three undersized check boxes and the *Keyboard* preset button after the
+font change; all four have been widened.
+
 ## Testing checklist
 
 **Functional**

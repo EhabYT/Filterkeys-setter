@@ -835,15 +835,17 @@ void CFilterKeysSetterDlg::UpdateStatus()
 	if (SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &fk, 0)) {
 		if (fk.dwFlags & FKF_FILTERKEYSON) {
 			if (fk.iBounceMSec) {
-				s.Format(_T("Active: ignoring repeats faster than %d ms"), fk.iBounceMSec);
+				s.Format(_T("FilterKeys on: bounce time %d ms"), fk.iBounceMSec);
 			}
 			else {
-				s.Format(_T("Active: ignore under %d ms, delay %d ms, repeat %d ms"),
+				// Kept short so it fits the status line without ellipsis even
+				// at four digits per value.
+				s.Format(_T("FilterKeys on: ignore %d / delay %d / repeat %d ms"),
 				         fk.iWaitMSec, fk.iDelayMSec, fk.iRepeatMSec);
 			}
 		}
 		else {
-			s = _T("FilterKeys is currently off");
+			s = _T("FilterKeys is off");
 		}
 	}
 	else {
