@@ -310,7 +310,7 @@ void CFilterKeysSetterDlg::InitToolTips()
 		return;
 	}
 
-	for (int i = 0; i < _countof(kToolTips); ++i) {
+	for (size_t i = 0; i < _countof(kToolTips); ++i) {
 		CWnd* pCtrl = GetDlgItem(kToolTips[i].nID);
 		if (pCtrl != NULL) {
 			m_toolTip.AddTool(pCtrl, kToolTips[i].pszText);
@@ -367,10 +367,12 @@ void CFilterKeysSetterDlg::SyncEditFromSlider(CSliderCtrl& slider, CEdit& edit)
 
 void CFilterKeysSetterDlg::OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar)
 {
-	if (pScrollBar == (CScrollBar*)&m_sliderDelay) {
+	const HWND hScrolled = (pScrollBar != NULL) ? pScrollBar->GetSafeHwnd() : NULL;
+
+	if (hScrolled != NULL && hScrolled == m_sliderDelay.GetSafeHwnd()) {
 		SyncEditFromSlider(m_sliderDelay, m_editDelay);
 	}
-	else if (pScrollBar == (CScrollBar*)&m_sliderRepeat) {
+	else if (hScrolled != NULL && hScrolled == m_sliderRepeat.GetSafeHwnd()) {
 		SyncEditFromSlider(m_sliderRepeat, m_editRepeat);
 		UpdateCharsPerSec();
 	}
