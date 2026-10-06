@@ -49,7 +49,7 @@ White on `#0A2342` is roughly 15:1, comfortably past the 4.5:1 requirement.
 ```
 Theme.h / Theme.cpp        new — palette, brushes, gradient, title bar, high contrast
 FilterKeysSetterDlg.h/.cpp theming, sliders, tooltips, status line, About box
-FilterKeysSetter.rc        Segoe UI, new layout (228 × 322 DLU), control order
+FilterKeysSetter.rc        Segoe UI, new layout (228 × 276 DLU), control order
 resource.h                 IDC_DELAY_SLIDER, IDC_REPEAT_SLIDER, IDC_DARKTHEME,
                            IDC_STATUS; IDC_EDIT1 renamed to IDC_TEST_EDIT
 FilterKeysSetter.vcxproj   Theme.* added, manifest wired up, DPI awareness,
@@ -154,6 +154,28 @@ whether the MFC component is installed, and builds `FilterKeysSetter.vcxproj`
 rather than the solution -- the `.vdproj` and its extension have no bearing on
 whether the application compiles. Errors and warnings from every platform are
 collected into one list at the end.
+
+## Compacting the dialog
+
+After the font change the dialog had grown to 228 × 322 DLU (399 × 604 px at
+100 %), with more air than content in places. It is now **228 × 276 DLU**
+(399 × 518 px), roughly 15 % shorter, without dropping a single control:
+
+| Change | DLU saved |
+| --- | --- |
+| Row pitch in the *Settings* group 18 → 16, first row moved up | 14 |
+| Slider height 14 → 12, gap to the edit above tightened | 6 |
+| *Load settings* and *Test area* group boxes 30 → 28 high | 4 |
+| *Appearance* group box dropped; *Dark theme* moved beside *OK* | 22 |
+
+The *Appearance* frame carried a single check box, and its caption said
+nothing that *Dark theme* did not already say. Next to the *OK* button the
+check box is just as easy to find, and the right-hand column now ends level
+with the left one.
+
+Nothing moved in z-order, so the tab order and `DDX_Radio` are untouched; only
+coordinates changed. Verified with `tools/check-dialog-layout.py` (clean) and
+`tools/render-dialog.py`.
 
 ## Dialog preview
 
