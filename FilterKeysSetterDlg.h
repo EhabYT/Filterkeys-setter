@@ -39,6 +39,7 @@ protected:
 
 	// Slider <-> edit box synchronisation
 	void InitSliders();
+	void InitToolTips();
 	void SyncSliderFromEdit(CSliderCtrl& slider, CEdit& edit);
 	void SyncEditFromSlider(CSliderCtrl& slider, CEdit& edit);
 
@@ -48,6 +49,7 @@ protected:
 
 	// Generated message map functions
 	virtual BOOL OnInitDialog();
+	virtual BOOL PreTranslateMessage(MSG* pMsg);
 	virtual void OnOK();
 
 	afx_msg void OnSysCommand(UINT nID, LPARAM lParam);
@@ -110,6 +112,8 @@ protected:
 	CSliderCtrl m_sliderRepeat;
 
 	CButton m_chkDarkTheme;
+
+	CToolTipCtrl m_toolTip;
 
 	CTheme m_theme;
 

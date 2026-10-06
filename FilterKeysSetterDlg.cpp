@@ -27,11 +27,17 @@ protected:
 
 	// Implementation
 protected:
+	virtual BOOL OnInitDialog();
+	afx_msg BOOL OnEraseBkgnd(CDC* pDC);
+	afx_msg HBRUSH OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor);
 	DECLARE_MESSAGE_MAP()
+
+	CTheme m_theme;
 };
 
 CAboutDlg::CAboutDlg() : CDialog(CAboutDlg::IDD)
 {
+	m_theme.SetMode(CTheme::LoadPreference());
 }
 
 void CAboutDlg::DoDataExchange(CDataExchange* pDX)
@@ -40,7 +46,48 @@ void CAboutDlg::DoDataExchange(CDataExchange* pDX)
 }
 
 BEGIN_MESSAGE_MAP(CAboutDlg, CDialog)
+	ON_WM_ERASEBKGND()
+	ON_WM_CTLCOLOR()
 END_MESSAGE_MAP()
+
+BOOL CAboutDlg::OnInitDialog()
+{
+	CDialog::OnInitDialog();
+
+	m_theme.ApplyToTitleBar(GetSafeHwnd());
+	for (CWnd* pChild = GetWindow(GW_CHILD); pChild != NULL;
+	     pChild = pChild->GetWindow(GW_HWNDNEXT)) {
+		m_theme.ApplyToControl(pChild->GetSafeHwnd());
+	}
+	return TRUE;
+}
+
+BOOL CAboutDlg::OnEraseBkgnd(CDC* pDC)
+{
+	if (!m_theme.IsDark()) {
+		return CDialog::OnEraseBkgnd(pDC);
+	}
+	CRect rect;
+	GetClientRect(&rect);
+	m_theme.PaintBackground(*pDC, rect);
+	return TRUE;
+}
+
+HBRUSH CAboutDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
+{
+	if (!m_theme.IsDark()) {
+		return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
+	}
+	if (nCtlColor == CTLCOLOR_STATIC || nCtlColor == CTLCOLOR_BTN) {
+		pDC->SetTextColor(m_theme.Palette().clrText);
+		pDC->SetBkMode(TRANSPARENT);
+		return (HBRUSH)::GetStockObject(HOLLOW_BRUSH);
+	}
+	if (nCtlColor == CTLCOLOR_DLG) {
+		return m_theme.BackBrush();
+	}
+	return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
+}
 
 
 // CFilterKeysSetterDlg dialog
@@ -182,6 +229,7 @@ BOOL CFilterKeysSetterDlg::OnInitDialog()
 
 	// Sliders have to exist before the first SetValues() call feeds them.
 	InitSliders();
+	InitToolTips();
 
 	m_chkDarkTheme.SetCheck(m_theme.IsDark() ? BST_CHECKED : BST_UNCHECKED);
 	ApplyTheme();
@@ -208,6 +256,79 @@ void CFilterKeysSetterDlg::InitSliders()
 	// the accessible name that screen readers announce.
 	m_sliderDelay.SetWindowText(_T("Repeat delay in milliseconds"));
 	m_sliderRepeat.SetWindowText(_T("Repeat rate in milliseconds"));
+}
+
+namespace
+{
+	struct ToolTipEntry
+	{
+		UINT nID;
+		const TCHAR* pszText;
+	};
+
+	// FilterKeys exposes four timings whose names say little on their own.
+	const ToolTipEntry kToolTips[] = {
+		{ IDC_IGNORE_QUICK,
+		  _T("Ignore keystrokes that are not held down long enough, and take over the key repeat timings.") },
+		{ IDC_IGNORE_REPEATED,
+		  _T("Suppress a second press of the same key that follows too quickly. Useful against bouncing key contacts.") },
+		{ IDC_WAIT_EDIT,
+		  _T("How long a key must be held before it registers at all. 0 accepts every keystroke immediately.") },
+		{ IDC_DELAY_EDIT,
+		  _T("How long a key is held before it starts repeating.") },
+		{ IDC_REPEAT_EDIT,
+		  _T("Milliseconds between two repeats. Smaller is faster: 500 ms is two characters per second, 25 ms is forty.") },
+		{ IDC_BOUNCE_EDIT,
+		  _T("Repeats of the same key arriving faster than this are discarded.") },
+		{ IDC_DELAY_SLIDER, _T("Repeat delay in milliseconds.") },
+		{ IDC_REPEAT_SLIDER, _T("Repeat rate in milliseconds. Drag left for a faster repeat.") },
+		{ IDC_ON, _T("FKF_FILTERKEYSON - FilterKeys is active.") },
+		{ IDC_AVAILABLE, _T("FKF_AVAILABLE - FilterKeys may be switched on at all.") },
+		{ IDC_HOTKEYACTIVE, _T("FKF_HOTKEYACTIVE - holding the right Shift key for eight seconds toggles FilterKeys.") },
+		{ IDC_CONFIRMHOTKEY, _T("FKF_CONFIRMHOTKEY - ask for confirmation before the shortcut takes effect.") },
+		{ IDC_HOTKEYSOUND, _T("FKF_HOTKEYSOUND - play a sound when the shortcut switches FilterKeys.") },
+		{ IDC_INDICATOR, _T("FKF_INDICATOR - show the FilterKeys icon in the notification area.") },
+		{ IDC_CLICK, _T("FKF_CLICKON - click on every accepted keystroke.") },
+		{ IDC_UPDATEINIFILE,
+		  _T("Write the settings to the registry so they survive a sign-out. Without this they only apply to the current session.") },
+		{ IDC_SENDCHANGE,
+		  _T("Broadcast WM_SETTINGCHANGE so running programs pick the new settings up.") },
+		{ IDC_SET_CURRENT, _T("Load the settings Windows is using right now.") },
+		{ IDC_SET_REGISTRY, _T("Load the settings stored in the registry.") },
+		{ IDC_SET_NORMAL, _T("Load the repeat timings from the standard Windows keyboard settings.") },
+		{ IDC_SET_DEFAULTS, _T("Load the Windows default FilterKeys values.") },
+		{ IDC_SET_ORIGINAL, _T("Restore the settings that were active when this program started.") },
+		{ IDC_TEST_EDIT, _T("Type here to try the timings out. Click Apply first.") },
+		{ IDC_APPLY, _T("Apply the settings without closing the window.") },
+		{ IDC_DARKTHEME, _T("Switch between the dark and the native light appearance.") },
+	};
+}
+
+void CFilterKeysSetterDlg::InitToolTips()
+{
+	if (!m_toolTip.Create(this, TTS_ALWAYSTIP)) {
+		return;
+	}
+
+	for (int i = 0; i < _countof(kToolTips); ++i) {
+		CWnd* pCtrl = GetDlgItem(kToolTips[i].nID);
+		if (pCtrl != NULL) {
+			m_toolTip.AddTool(pCtrl, kToolTips[i].pszText);
+		}
+	}
+
+	// Without a width limit the longer explanations become one endless line.
+	m_toolTip.SetMaxTipWidth(300);
+	m_toolTip.SetDelayTime(TTDT_AUTOPOP, 15000);
+	m_toolTip.Activate(TRUE);
+}
+
+BOOL CFilterKeysSetterDlg::PreTranslateMessage(MSG* pMsg)
+{
+	if (::IsWindow(m_toolTip.GetSafeHwnd())) {
+		m_toolTip.RelayEvent(pMsg);
+	}
+	return CDialog::PreTranslateMessage(pMsg);
 }
 
 void CFilterKeysSetterDlg::SyncSliderFromEdit(CSliderCtrl& slider, CEdit& edit)
@@ -514,7 +635,9 @@ void CFilterKeysSetterDlg::UpdateFlagVal()
 {
 	DWORD dwFlags = GetFlagsVal();
 	CString s;
-	s.Format(_T("(%u)"), dwFlags);
+	// The raw number is what the registry stores, so keep it visible -- but
+	// show the hex form too, which is how the FKF_* constants are documented.
+	s.Format(_T("Flags: %u (0x%02X)"), dwFlags, dwFlags);
 	m_staticFlagVal.SetWindowText(s);
 }
 
