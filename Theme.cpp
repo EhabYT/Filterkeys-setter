@@ -221,8 +221,9 @@ void CTheme::ApplyToControl(HWND hWndControl) const
 
 	// Only BUTTON (check boxes, radio buttons, group boxes) and STATIC honour
 	// the WM_CTLCOLORSTATIC text colour -- and only while they are not drawn by
-	// the visual style engine. Push buttons keep their native look on purpose:
-	// owner-drawing them is out of scope for this change.
+	// the visual style engine. Push buttons are deliberately left attached to
+	// the style: an unthemed button sends no NM_CUSTOMDRAW, and that
+	// notification is what CFilterKeysSetterDlg uses to paint them.
 	const bool isButton = (_tcsicmp(szClass, _T("Button")) == 0);
 	const bool isStatic = (_tcsicmp(szClass, _T("Static")) == 0);
 	if (!isButton && !isStatic) {

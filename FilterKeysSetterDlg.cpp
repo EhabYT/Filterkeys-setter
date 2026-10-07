@@ -189,6 +189,16 @@ BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
 	ON_WM_HSCROLL()
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_DELAY_SLIDER, OnCustomDrawSlider)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_REPEAT_SLIDER, OnCustomDrawSlider)
+	// Push buttons keep their native look in light mode; in dark mode they
+	// are drawn here, because a themed button ignores WM_CTLCOLORBTN.
+	ON_NOTIFY(NM_CUSTOMDRAW, IDOK, OnCustomDrawButton)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDCANCEL, OnCustomDrawButton)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_APPLY, OnCustomDrawButton)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_CURRENT, OnCustomDrawButton)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_REGISTRY, OnCustomDrawButton)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_NORMAL, OnCustomDrawButton)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_DEFAULTS, OnCustomDrawButton)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_ORIGINAL, OnCustomDrawButton)
 	ON_WM_SETTINGCHANGE()
 END_MESSAGE_MAP()
 
@@ -508,6 +518,85 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 	default:
 		return;
 	}
+}
+
+void CFilterKeysSetterDlg::OnCustomDrawButton(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
+	*pResult = CDRF_DODEFAULT;
+
+	// Light mode keeps the native button, which is exactly what it should
+	// look like there.
+	if (!m_theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
+		return;
+	}
+
+	CDC* pDC = CDC::FromHandle(pcd->hdc);
+	CWnd* pButton = CWnd::FromHandle(pcd->hdr.hwndFrom);
+	if (pDC == NULL || pButton == NULL) {
+		return;
+	}
+
+	const ThemePalette& pal = m_theme.Palette();
+	const bool enabled  = (pcd->uItemState & CDIS_DISABLED) == 0;
+	const bool pressed  = (pcd->uItemState & CDIS_SELECTED) != 0;
+	const bool hot      = (pcd->uItemState & CDIS_HOT) != 0;
+	const bool focused  = (pcd->uItemState & CDIS_FOCUS) != 0;
+
+	const LONG style = ::GetWindowLong(pcd->hdr.hwndFrom, GWL_STYLE);
+	const bool isDefault = (style & BS_DEFPUSHBUTTON) == BS_DEFPUSHBUTTON;
+
+	// Pressed is the darkest state, hover the brightest; both keep white text
+	// above 4.5:1.
+	COLORREF clrFace = pal.clrSurface;
+	if (!enabled) {
+		clrFace = pal.clrBackMid;
+	}
+	else if (pressed) {
+		clrFace = pal.clrBackBottom;
+	}
+	else if (hot) {
+		clrFace = pal.clrAccentMuted;
+	}
+
+	CRect rc(pcd->rc);
+	pDC->FillSolidRect(rc, clrFace);
+
+	const COLORREF clrEdge = (isDefault || focused) ? pal.clrAccent : pal.clrAccentMuted;
+	pDC->Draw3dRect(rc, clrEdge, clrEdge);
+	if (isDefault) {
+		CRect rcInner(rc);
+		rcInner.DeflateRect(1, 1);
+		pDC->Draw3dRect(rcInner, clrEdge, clrEdge);
+	}
+
+	CString strText;
+	pButton->GetWindowText(strText);
+
+	const int oldMode = pDC->SetBkMode(TRANSPARENT);
+	const COLORREF oldText = pDC->SetTextColor(enabled ? pal.clrText : pal.clrTextDisabled);
+	CFont* pFont = pButton->GetFont();
+	CFont* pOldFont = (pFont != NULL) ? pDC->SelectObject(pFont) : NULL;
+
+	CRect rcText(rc);
+	if (pressed) {
+		rcText.OffsetRect(1, 1);   // the usual nudge on click
+	}
+	pDC->DrawText(strText, rcText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+	if (pOldFont != NULL) {
+		pDC->SelectObject(pOldFont);
+	}
+	pDC->SetTextColor(oldText);
+	pDC->SetBkMode(oldMode);
+
+	if (focused && enabled) {
+		CRect rcFocus(rc);
+		rcFocus.DeflateRect(3, 3);
+		pDC->DrawFocusRect(rcFocus);
+	}
+
+	*pResult = CDRF_SKIPDEFAULT;
 }
 
 BOOL CFilterKeysSetterDlg::OnEraseBkgnd(CDC* pDC)

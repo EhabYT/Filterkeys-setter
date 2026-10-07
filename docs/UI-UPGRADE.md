@@ -11,8 +11,8 @@ no styles, resource dictionaries, Mica or NuGet packages involved. No new
 dependency was added; the only extra import library is `uxtheme.lib`, which
 ships with the Windows SDK.
 
-Deliberately **not** done: owner-drawing the push buttons, and per-monitor DPI
-awareness. Both are noted under *Known trade-offs*.
+Deliberately **not** done: per-monitor DPI awareness, noted under
+*Known trade-offs*.
 
 ## What changed
 
@@ -254,13 +254,39 @@ preview and a stand-in for the README, not a substitute for a screenshot.
 - [ ] Tooltips appear on hover and stay long enough to read
 - [ ] Accesskeys and Esc/Enter still behave
 
+## Push buttons in the dark theme
+
+The eight push buttons were the last native-grey island in the dark dialog,
+and the new, lighter palette made them stand out more than before. They are
+now drawn by the dialog, through `NM_CUSTOMDRAW` rather than `BS_OWNERDRAW`:
+
+* no resource change, so the buttons stay ordinary push buttons for the
+  dialog manager, for `DDX` and for screen readers,
+* a single `CDDS_PREPAINT` branch per button; everything else falls through
+  to the default drawing.
+
+| State | Face | Notes |
+| --- | --- | --- |
+| Normal | `#1D5188` | white text, 8.1:1 |
+| Hover | `#3778B5` | white text, 4.7:1 |
+| Pressed | `#14263F` | plus the usual one pixel text nudge |
+| Disabled | `#1F3A61` | `#A8BBD6` text |
+
+The default button (*OK*) carries a two pixel `#5D9CD6` border, a focused
+button the same border plus the system focus rectangle, so keyboard focus
+stays visible without relying on colour alone.
+
+This is why `CTheme::ApplyToControl` leaves push buttons attached to the
+visual style: an unthemed button falls back to classic drawing and never
+sends `NM_CUSTOMDRAW`.
+
 ## Known trade-offs
 
 **Check boxes, radio buttons and group boxes look flat in the dark theme.**
 They have to be detached from the visual style with
 `SetWindowTheme(hwnd, L"", L"")`, because the theme engine paints its own text
 in black and ignores `WM_CTLCOLORSTATIC` entirely. Classic rendering is the
-price of readable labels. Push buttons keep their native look on purpose.
+price of readable labels.
 
 **System DPI, not per-monitor.** Per-monitor v2 requires handling
 `WM_DPICHANGED` and rebuilding fonts and layout at runtime, which this dialog
