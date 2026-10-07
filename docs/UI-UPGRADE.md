@@ -529,8 +529,21 @@ the mode. Users can also clear the preference themselves by deleting
 ## Still open
 
 `.github/workflows/build.yml` replaces the unusable CMake-on-Ubuntu starter
-workflow with a dialog-layout check on Ubuntu plus MSBuild on both
-`windows-2022` (VS 2022, v143) and `windows-2025` (VS 2026, v145), for `Win32`
-and `x64`. It could not be pushed: GitHub rejects workflow files from an app
-without the `workflows` permission. Until it lands, none of the above has been
-compiled in CI.
+workflow with the four static checks on Ubuntu --
+`check-dialog-layout.py`, `check-message-map.py`, `check-resources.py` and
+`selftest.py` -- plus MSBuild on both `windows-2022` (VS 2022, v143) and
+`windows-2025` (VS 2026, v145), for `Win32` and `x64`. It could not be
+pushed: GitHub rejects workflow files from an app without the `workflows`
+permission. Until it lands, none of the above has been compiled in CI, and
+the checks only run when someone runs them by hand:
+
+```
+python tools\check-dialog-layout.py
+python tools\check-message-map.py
+python tools\check-resources.py
+python tools\selftest.py
+```
+
+The expected output is four clean runs: two `ok` lines, `0 problem(s)` with
+a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)` and
+`22 case(s), 0 failure(s)`. Anything else is a regression.
