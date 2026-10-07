@@ -13,13 +13,17 @@ namespace
 
 	// Palette taken from the application icon.
 	const ThemePalette kDarkPalette = {
-		RGB(0x0A, 0x23, 0x42),  // back top      #0A2342
-		RGB(0x1E, 0x5A, 0x9E),  // back bottom   #1E5A9E
-		RGB(0x12, 0x3B, 0x6E),  // surface       #123B6E
-		RGB(0x4B, 0x9B, 0xEE),  // accent        #4B9BEE
+		RGB(0x2A, 0x4A, 0x7B),  // back top      #2A4A7B
+		RGB(0x1F, 0x3A, 0x61),  // back middle   #1F3A61
+		RGB(0x14, 0x26, 0x3F),  // back bottom   #14263F
+		RGB(0x1D, 0x51, 0x88),  // surface       #1D5188
+		RGB(0x5D, 0x9C, 0xD6),  // accent        #5D9CD6
+		RGB(0x37, 0x78, 0xB5),  // accent muted  #3778B5
 		RGB(0xFF, 0xFF, 0xFF),  // text          #FFFFFF
 		RGB(0xE0, 0xE0, 0xE0),  // secondary     #E0E0E0
-		RGB(0x8C, 0xA4, 0xC4),  // disabled
+		// Light enough to stay above 4.5:1 on the lightest band of the
+		// gradient (#2A4A7B), where the old #8CA4C4 only reached 3.5:1.
+		RGB(0xA8, 0xBB, 0xD6),  // disabled      #A8BBD6
 	};
 
 	// Light mode deliberately stays close to the system colours so the dialog
@@ -28,9 +32,11 @@ namespace
 	{
 		ThemePalette p;
 		p.clrBackTop        = ::GetSysColor(COLOR_3DFACE);
+		p.clrBackMid        = ::GetSysColor(COLOR_3DFACE);
 		p.clrBackBottom     = ::GetSysColor(COLOR_3DFACE);
 		p.clrSurface        = ::GetSysColor(COLOR_WINDOW);
-		p.clrAccent         = RGB(0x1E, 0x5A, 0x9E);
+		p.clrAccent         = RGB(0x1D, 0x51, 0x88);
+		p.clrAccentMuted    = RGB(0x37, 0x78, 0xB5);
 		p.clrText           = ::GetSysColor(COLOR_WINDOWTEXT);
 		p.clrTextSecondary  = ::GetSysColor(COLOR_GRAYTEXT);
 		p.clrTextDisabled   = ::GetSysColor(COLOR_GRAYTEXT);
@@ -143,12 +149,15 @@ void CTheme::PaintBackgroundSlice(CDC& dc, const CRect& full, const CRect& targe
 		return;
 	}
 
-	const int r1 = GetRValue(m_palette.clrBackTop);
-	const int g1 = GetGValue(m_palette.clrBackTop);
-	const int b1 = GetBValue(m_palette.clrBackTop);
-	const int r2 = GetRValue(m_palette.clrBackBottom);
-	const int g2 = GetGValue(m_palette.clrBackBottom);
-	const int b2 = GetBValue(m_palette.clrBackBottom);
+	// Three stops: top -> middle over the upper half, middle -> bottom over
+	// the lower half.
+	const COLORREF stops[3] = {
+		m_palette.clrBackTop,
+		m_palette.clrBackMid,
+		m_palette.clrBackBottom,
+	};
+
+	const int half = bands / 2;
 
 	for (int i = 0; i < bands; ++i) {
 		CRect band(full.left,
@@ -161,9 +170,22 @@ void CTheme::PaintBackgroundSlice(CDC& dc, const CRect& full, const CRect& targe
 			continue;
 		}
 
-		const COLORREF clr = RGB(r1 + (r2 - r1) * i / (bands - 1),
-		                         g1 + (g2 - g1) * i / (bands - 1),
-		                         b1 + (b2 - b1) * i / (bands - 1));
+		// Which half of the gradient this band belongs to, and how far it
+		// has travelled through it.
+		const int segment = (i < half) ? 0 : 1;
+		const int step    = (i < half) ? i : (i - half);
+		const int steps   = (segment == 0) ? half : (bands - half);
+
+		const COLORREF from = stops[segment];
+		const COLORREF to   = stops[segment + 1];
+
+		const int r1 = GetRValue(from), r2 = GetRValue(to);
+		const int g1 = GetGValue(from), g2 = GetGValue(to);
+		const int b1 = GetBValue(from), b2 = GetBValue(to);
+
+		const COLORREF clr = RGB(r1 + (r2 - r1) * step / (steps - 1),
+		                         g1 + (g2 - g1) * step / (steps - 1),
+		                         b1 + (b2 - b1) * step / (steps - 1));
 		dc.FillSolidRect(clipped, clr);
 	}
 }

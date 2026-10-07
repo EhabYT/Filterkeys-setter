@@ -63,23 +63,27 @@ SELECTED_RADIO = "IDC_IGNORE_QUICK"
 THUMB = {"IDC_DELAY_SLIDER": 0.125, "IDC_REPEAT_SLIDER": 0.01}
 
 DARK = {
-    "back_top": (0x0A, 0x23, 0x42),
-    "back_bottom": (0x1E, 0x5A, 0x9E),
-    "surface": (0x12, 0x3B, 0x6E),
-    "accent": (0x4B, 0x9B, 0xEE),
+    "back_top": (0x2A, 0x4A, 0x7B),
+    "back_mid": (0x1F, 0x3A, 0x61),
+    "back_bottom": (0x14, 0x26, 0x3F),
+    "surface": (0x1D, 0x51, 0x88),
+    "accent": (0x5D, 0x9C, 0xD6),
+    "accent_muted": (0x37, 0x78, 0xB5),
     "text": (0xFF, 0xFF, 0xFF),
     "secondary": (0xE0, 0xE0, 0xE0),
-    "disabled": (0x8C, 0xA4, 0xC4),
-    "title": (0x0A, 0x23, 0x42),
+    "disabled": (0xA8, 0xBB, 0xD6),
+    "title": (0x14, 0x26, 0x3F),
     "title_text": (0xFF, 0xFF, 0xFF),
-    "frame": (0x00, 0x00, 0x00),
+    "frame": (0x0D, 0x1A, 0x2C),
 }
 
 LIGHT = {
     "back_top": (0xF0, 0xF0, 0xF0),
+    "back_mid": (0xF0, 0xF0, 0xF0),
     "back_bottom": (0xF0, 0xF0, 0xF0),
     "surface": (0xFF, 0xFF, 0xFF),
-    "accent": (0x1E, 0x5A, 0x9E),
+    "accent": (0x1D, 0x51, 0x88),
+    "accent_muted": (0x37, 0x78, 0xB5),
     "text": (0x00, 0x00, 0x00),
     "secondary": (0x44, 0x44, 0x44),
     "disabled": (0x6D, 0x6D, 0x6D),
@@ -149,12 +153,19 @@ class Canvas:
         return n * self.k
 
     # -- painting ---------------------------------------------------------
+    def _gradient(self, t):
+        """Three stop gradient, same split as CTheme::PaintBackgroundSlice."""
+        stops = (self.pal["back_top"], self.pal["back_mid"], self.pal["back_bottom"])
+        if t < 0.5:
+            a, b, u = stops[0], stops[1], t * 2
+        else:
+            a, b, u = stops[1], stops[2], (t - 0.5) * 2
+        return tuple(int(a[c] + (b[c] - a[c]) * u) for c in range(3))
+
     def background(self):
-        top, bottom = self.pal["back_top"], self.pal["back_bottom"]
         for i in range(self.top, self.h):
             t = (i - self.top) / max(1, self.h - self.top - 1)
-            self.d.line([(0, i), (self.w, i)],
-                        fill=tuple(int(top[c] + (bottom[c] - top[c]) * t) for c in range(3)))
+            self.d.line([(0, i), (self.w, i)], fill=self._gradient(t))
 
     def title_bar(self, caption):
         self.d.rectangle([0, 0, self.w, self.top], fill=self.pal["title"])
@@ -193,9 +204,8 @@ class Canvas:
                         font=self.font, fill=self.pal["text"], anchor="lm")
 
     def _blend_at(self, y):
-        top, bottom = self.pal["back_top"], self.pal["back_bottom"]
         t = max(0.0, min(1.0, (y - self.top) / max(1, self.h - self.top - 1)))
-        return tuple(int(top[c] + (bottom[c] - top[c]) * t) for c in range(3))
+        return self._gradient(t)
 
     def edit(self, rect, value):
         x0, y0, x1, y1 = self.box(rect)
@@ -264,7 +274,7 @@ class Canvas:
         x0, y0, x1, y1 = self.box(rect)
         cy = (y0 + y1) / 2
         self.d.rectangle([x0, cy - self.px(2), x1, cy + self.px(2)],
-                         fill=self.pal["surface"], outline=self.pal["back_top"],
+                         fill=self.pal["surface"], outline=self.pal["accent_muted"],
                          width=max(1, self.k // 2))
         tx = x0 + (x1 - x0 - self.px(8)) * position
         self.d.rectangle([tx, y0 + self.px(1), tx + self.px(8), y1 - self.px(1)],

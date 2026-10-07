@@ -22,7 +22,8 @@ Original version 1.02 from Soarer's article [FilterKeys Setter... for a faster k
 # Appearance
 
 The dialog ships with a dark theme built from the palette of the application
-icon (`#0A2342` background, `#1E5A9E` gradient, `#4B9BEE` accent). Clear the
+icon: a navy background that deepens from `#2A4A7B` through `#1F3A61` to
+`#14263F`, `#1D5188` input surfaces and a `#5D9CD6` accent. Clear the
 *Dark theme* check box next to the *OK* button to fall back to the native
 light look; the choice is remembered in
 `HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme`.

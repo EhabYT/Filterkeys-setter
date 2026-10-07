@@ -34,15 +34,32 @@ awareness. Both are noted under *Known trade-offs*.
 
 | Role | Dark | Light |
 |---|---|---|
-| Background top | `#0A2342` | `COLOR_3DFACE` |
-| Background bottom | `#1E5A9E` | `COLOR_3DFACE` |
-| Surface (edit fields) | `#123B6E` | `COLOR_WINDOW` |
-| Accent (slider thumb) | `#4B9BEE` | `#1E5A9E` |
+| Background top | `#2A4A7B` | `COLOR_3DFACE` |
+| Background middle | `#1F3A61` | `COLOR_3DFACE` |
+| Background bottom | `#14263F` | `COLOR_3DFACE` |
+| Surface (edit fields) | `#1D5188` | `COLOR_WINDOW` |
+| Accent (slider thumb) | `#5D9CD6` | `#1D5188` |
+| Muted accent (slider channel) | `#3778B5` | `#3778B5` |
 | Primary text | `#FFFFFF` | `COLOR_WINDOWTEXT` |
 | Secondary text | `#E0E0E0` | `COLOR_GRAYTEXT` |
+| Disabled text | `#A8BBD6` | `COLOR_GRAYTEXT` |
 
-White on `#0A2342` is roughly 15:1, comfortably past the 4.5:1 requirement.
-`#4B9BEE` is used for fills only, never for text.
+The background is a **three stop** gradient: `#2A4A7B` at the top, `#1F3A61`
+halfway down, `#14263F` at the bottom. `CTheme::PaintBackgroundSlice` walks
+its 128 bands in two halves, and `PaintBackgroundSlice` lets a child control
+reproduce exactly the slice sitting behind it, so the stops line up across
+control boundaries.
+
+Contrast of white text against the three background stops is 8.9:1, 11.4:1 and
+15.2:1, and 8.1:1 on the input surface -- all past the 4.5:1 requirement.
+Secondary text `#E0E0E0` ranges from 6.7:1 to 11.5:1.
+
+Disabled text had to change with the palette. The old `#8CA4C4` sat on a very
+dark background (`#0A2342`, 5.5:1); against the new, lighter top band it would
+have dropped to **3.5:1**. `#A8BBD6` restores 4.5:1 at the top of the gradient
+and more further down.
+
+`#5D9CD6` and `#3778B5` are used for fills and outlines only, never for text.
 
 ## Files touched
 

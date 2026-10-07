@@ -1,7 +1,8 @@
 ﻿// Theme.h : colour palette and theming helpers for the FilterKeys Setter dialog.
 //
-// The palette is derived from the application icon: a deep navy background with
-// a mid-blue gradient and a bright cyan accent.
+// The palette is derived from the application icon: a navy background that
+// deepens towards the bottom in three steps, blue input surfaces and a light
+// blue accent.
 
 #pragma once
 
@@ -14,9 +15,11 @@ enum class ThemeMode
 struct ThemePalette
 {
 	COLORREF clrBackTop;        // top of the dialog background gradient
+	COLORREF clrBackMid;        // middle stop of that gradient
 	COLORREF clrBackBottom;     // bottom of the dialog background gradient
 	COLORREF clrSurface;        // edit controls and other input surfaces
-	COLORREF clrAccent;         // sliders, focus, highlights
+	COLORREF clrAccent;         // slider thumb, focus, highlights
+	COLORREF clrAccentMuted;    // quieter accent: slider channel, outlines
 	COLORREF clrText;           // primary text
 	COLORREF clrTextSecondary;  // secondary / computed text
 	COLORREF clrTextDisabled;   // greyed-out controls

@@ -485,7 +485,7 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 			// A slim recessed track.
 			rc.DeflateRect(0, (rc.Height() > 4) ? (rc.Height() - 4) / 2 : 0);
 			pDC->FillSolidRect(rc, pal.clrSurface);
-			pDC->Draw3dRect(rc, pal.clrBackTop, pal.clrBackTop);
+			pDC->Draw3dRect(rc, pal.clrAccentMuted, pal.clrAccentMuted);
 			*pResult = CDRF_SKIPDEFAULT;
 			return;
 		}
