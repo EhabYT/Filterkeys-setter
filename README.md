@@ -62,6 +62,9 @@ in 2026, which no longer ships `v143`).
   ```
 
   Add `/p:PlatformToolset=v143` to pin an older toolset when several are installed side by side.
+  Note the platform names: the **solution** calls the 32-bit platform `x86`, the **project** calls
+  it `Win32`. `msbuild FilterKeysSetter.sln /p:Platform=Win32` fails with `MSB4126`; either use
+  `x86` there, or build `FilterKeysSetter.vcxproj`, which is what `tools\build.cmd` does.
 * **One-shot script:** `tools\build.cmd` finds the installed Visual Studio through `vswhere`,
   warns when the MFC component is missing, rebuilds `Release` for `Win32` and `x64`, and prints
   every error and warning at the end. Logs land in `build-Release-<platform>.log`.
@@ -93,7 +96,8 @@ python tools\check-dialog-layout.py    :: geometry, captions, accelerators, tab 
 python tools\check-message-map.py      :: MFC message maps, DDX and tool tip wiring
 python tools\check-resources.py        :: resource IDs, the icon container, versions
 python tools\check-error-handling.py   :: Win32 results that are thrown away
-python tools\selftest.py               :: breaks the sources on purpose to test the four above
+python tools\check-project.py          :: project references, configurations, precompiled header
+python tools\selftest.py               :: breaks the sources on purpose to test the five above
 ```
 
 # Usage

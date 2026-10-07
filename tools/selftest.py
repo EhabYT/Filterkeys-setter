@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Self test for the four static checkers in this folder.
+"""Self test for the five static checkers in this folder.
 
 Every rule in check-dialog-layout.py, check-message-map.py,
 check-resources.py and check-error-handling.py was originally verified the same way: break the source on
@@ -32,11 +32,14 @@ DLG = "FilterKeysSetterDlg.cpp"
 HDR = "FilterKeysSetterDlg.h"
 RES = "resource.h"
 VDPROJ = os.path.join("FilterKeysSetter.Setup", "FilterKeysSetter.Setup.vdproj")
+VCXPROJ = "FilterKeysSetter.vcxproj"
+SLN = "FilterKeysSetter.sln"
 
 LAYOUT = "check-dialog-layout.py"
 MAP = "check-message-map.py"
 RESOURCES = "check-resources.py"
 ERRORS = "check-error-handling.py"
+PROJECT = "check-project.py"
 
 # (name, checker, file, text to replace, replacement, expected in the output)
 CASES = [
@@ -101,6 +104,32 @@ CASES = [
      'IDC_STATUS,6,240,216,12,SS_CENTERIMAGE | SS_ENDELLIPSIS | SS_NOTIFY',
      'IDC_STATUS,6,240,216,12,SS_CENTERIMAGE | SS_ENDELLIPSIS',
      "the static has no"),
+
+    # -- check-project.py -------------------------------------------------
+    ("project references a file that is gone", PROJECT, VCXPROJ,
+     '<ClInclude Include="Theme.h" />',
+     '<ClInclude Include="Theme-renamed.h" />',
+     "which does not exist"),
+
+    ("source file not in the project", PROJECT, VCXPROJ,
+     '<ClCompile Include="Theme.cpp" />',
+     "",
+     "not in the project"),
+
+    ("a configuration dropped from the project", PROJECT, VCXPROJ,
+     '<ProjectConfiguration Include="Release|Win32">',
+     '<ProjectConfiguration Include="Release|ARM64">',
+     "no Release|Win32 configuration"),
+
+    ("solution no longer maps a platform", PROJECT, SLN,
+     ".Release|x86.ActiveCfg = Release|Win32",
+     ".Release|x86.ActiveCfg = Release|x64",
+     "no solution configuration builds"),
+
+    ("translation unit not starting with pch.h", PROJECT, "Theme.cpp",
+     '#include "pch.h"',
+     '#include "Theme.h"',
+     "needs #include"),
 
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
@@ -195,7 +224,7 @@ def run(checker, sandbox):
     # Always the copy of the checker inside the sandbox, so that editing a
     # checker is covered by this test as well.
     script = os.path.join(sandbox, "tools", checker)
-    if checker == RESOURCES:
+    if checker in (RESOURCES, PROJECT):
         argv = [sys.executable, script, sandbox]
     elif checker == LAYOUT:
         argv = [sys.executable, script, os.path.join(sandbox, RC)]
@@ -221,7 +250,7 @@ def main():
         copy_tree(sandbox)
 
         # A mutation test only means something if the baseline is clean.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("baseline: %s already fails:\n%s"
@@ -272,7 +301,7 @@ def main():
                 print("ok  %-48s %s" % (name, RESOURCES))
 
         # Nothing may be left behind in the scratch copy.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("after restoring, %s fails:\n%s"

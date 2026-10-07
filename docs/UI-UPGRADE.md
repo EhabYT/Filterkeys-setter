@@ -498,6 +498,37 @@ Expected output: `3 file(s), 0 problem(s)`. The self test covers both
 directions: dropping a real check is caught, and so is removing the `(void)`
 marker.
 
+## Pre-build check of the project files
+
+`tools/check-project.py` reads `FilterKeysSetter.sln` and
+`FilterKeysSetter.vcxproj` and reports what MSBuild would only tell you
+after it has started, usually as a code rather than a sentence: a file that
+has moved (`C1083`), a translation unit that forgot the precompiled header
+(`C1010`), a configuration that exists in the project but in no solution
+configuration (`MSB4126`).
+
+It found one thing immediately:
+
+> `.github/workflows/build.yml` builds `FilterKeysSetter.sln` with
+> `/p:Platform=Win32`, but the solution only knows `x64`, `x86`
+
+**The solution and the project disagree about the name of the 32-bit
+platform.** The solution calls it `x86` and maps it onto the project's
+`Win32`; passing `Win32` to the solution fails with `MSB4126`. The CI
+workflow did exactly that, so half of its matrix would have failed on the
+first run -- and nobody could have noticed, because that workflow has never
+been allowed to run. It now builds the `.vcxproj` directly, which is what
+`tools\build.cmd` has always done and what makes `Win32` the right name.
+
+The checker resolves `${{ matrix.platform }}` against the `platform: [...]`
+list rather than skipping it, because that is precisely where the mismatch
+was hiding. It also reports, as a note, that `FilterKeysSetter.Setup` has
+`ActiveCfg` entries but no `Build.0` entries -- the MSI is never produced by
+a solution build, which is the default for installer projects and left as
+it is.
+
+Expected output: one note and `15 reference(s), 0 problem(s)`.
+
 ## Self test for the checkers
 
 Three checkers now gate this repository, and each of their rules was verified
@@ -512,8 +543,8 @@ nobody would notice that they had stopped checking.
 python tools\selftest.py -v
 ```
 
-It copies the tree into a scratch directory, confirms all four checkers are
-clean on the untouched copy, then applies **24 mutations** one at a time --
+It copies the tree into a scratch directory, confirms all five checkers are
+clean on the untouched copy, then applies **29 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -524,7 +555,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `24 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `29 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -637,9 +668,9 @@ the mode. Users can also clear the preference themselves by deleting
 ## Still open
 
 `.github/workflows/build.yml` replaces the unusable CMake-on-Ubuntu starter
-workflow with the five static checks on Ubuntu --
+workflow with the six static checks on Ubuntu --
 `check-dialog-layout.py`, `check-message-map.py`, `check-resources.py`,
-`check-error-handling.py` and `selftest.py` -- plus MSBuild on both
+`check-error-handling.py`, `check-project.py` and `selftest.py` -- plus MSBuild on both
 `windows-2022` (VS 2022, v143) and `windows-2025` (VS 2026, v145), for
 `Win32` and `x64`. It could not be
 pushed: GitHub rejects workflow files from an app without the `workflows`
@@ -654,6 +685,7 @@ python tools\check-error-handling.py
 python tools\selftest.py
 ```
 
-The expected output is five clean runs: two `ok` lines, `0 problem(s)` with
+The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
-`3 file(s), 0 problem(s)` and `24 case(s), 0 failure(s)`. Anything else is a regression.
+`3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
+`29 case(s), 0 failure(s)`. Anything else is a regression.
