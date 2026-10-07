@@ -194,6 +194,28 @@ Nothing moved in z-order, so the tab order and `DDX_Radio` are untouched; only
 coordinates changed. Verified with `tools/check-dialog-layout.py` (clean) and
 `tools/render-dialog.py`.
 
+## Message map check
+
+`tools/check-message-map.py` compares the three places an MFC handler has to
+appear: the entry in `BEGIN_MESSAGE_MAP`, the `afx_msg` declaration in the
+class, and the definition in the `.cpp`. It also checks every control ID used
+in a map or in `DDX_*` against `resource.h`, flags duplicate entries, and
+reports `afx_msg` members that no map references any more.
+
+```cmd
+python tools\check-message-map.py
+```
+
+Why a tool for this: the compiler does catch these mistakes, but it reports
+them from inside the macro expansion, and the `.cpp` grew eight new
+`ON_NOTIFY` entries for the push buttons alone. Verified by injecting three
+faults -- a typo in a handler name, a typo in a control ID, and an
+`ON_WM_TIMER()` with no handler behind it -- all three were reported.
+
+Current state: clean, with one note. `ON_COMMAND(ID_HELP, CWinApp::OnHelp)`
+in `FilterKeysSetter.cpp` points at a base class member, which the tool
+reports and skips rather than guessing at MFC's own class hierarchy.
+
 ## Dialog preview
 
 `tools/render-dialog.py` draws the main dialog from the resource script and the

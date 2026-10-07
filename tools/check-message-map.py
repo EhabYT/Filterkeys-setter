@@ -1,0 +1,246 @@
+#!/usr/bin/env python3
+"""Static check of the MFC message maps in this project.
+
+A message map is three things that have to agree: the entry in
+BEGIN_MESSAGE_MAP, the `afx_msg` declaration in the class, and the definition
+in the .cpp. When they disagree the compiler and linker do say so -- but the
+errors are famously indirect ("term does not evaluate to a function taking 2
+arguments", unresolved externals pointing at a macro), and on a machine
+without Visual Studio they are not available at all.
+
+What is checked:
+
+  * every handler named in a message map is declared in its class,
+  * every handler named in a message map is defined in the .cpp,
+  * every control ID used in a map or in DDX exists in resource.h,
+  * `afx_msg` members that no map ever references (dead handlers),
+  * duplicate entries for the same notification and ID.
+
+Usage:  python tools/check-message-map.py [file.cpp ...]
+Exit code 1 if anything looks wrong.
+"""
+
+import os
+import re
+import sys
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
+
+DEFAULT_SOURCES = ["FilterKeysSetterDlg.cpp", "FilterKeysSetter.cpp"]
+
+# ON_WM_* macros expand to a fixed handler name. Only the ones this project
+# uses need to be listed; anything else is reported as "not checked" instead
+# of being treated as an error.
+WM_HANDLERS = {
+    "ON_WM_SYSCOMMAND": "OnSysCommand",
+    "ON_WM_PAINT": "OnPaint",
+    "ON_WM_QUERYDRAGICON": "OnQueryDragIcon",
+    "ON_WM_ERASEBKGND": "OnEraseBkgnd",
+    "ON_WM_CTLCOLOR": "OnCtlColor",
+    "ON_WM_HSCROLL": "OnHScroll",
+    "ON_WM_VSCROLL": "OnVScroll",
+    "ON_WM_SETTINGCHANGE": "OnSettingChange",
+    "ON_WM_DESTROY": "OnDestroy",
+    "ON_WM_TIMER": "OnTimer",
+    "ON_WM_SIZE": "OnSize",
+    "ON_WM_CLOSE": "OnClose",
+}
+
+# Macros that name their handler explicitly, with the argument index of the
+# handler and of the control ID (None when the macro carries no ID).
+CONTROL_MACROS = {
+    "ON_COMMAND": (1, 0),
+    "ON_BN_CLICKED": (1, 0),
+    "ON_EN_CHANGE": (1, 0),
+    "ON_EN_KILLFOCUS": (1, 0),
+    "ON_EN_SETFOCUS": (1, 0),
+    "ON_CBN_SELCHANGE": (1, 0),
+    "ON_NOTIFY": (2, 1),
+    "ON_STN_CLICKED": (1, 0),
+}
+
+
+def read(path):
+    with open(path, encoding="utf-8-sig") as handle:
+        return handle.read()
+
+
+def strip_comments(text):
+    text = re.sub(r"/\*.*?\*/", "", text, flags=re.S)
+    return re.sub(r"//[^\n]*", "", text)
+
+
+def resource_ids(path):
+    ids = set()
+    for line in read(path).splitlines():
+        match = re.match(r"\s*#define\s+(\w+)\s+", line)
+        if match:
+            ids.add(match.group(1))
+    # Defined by MFC (afxres.h) and the Windows headers rather than by
+    # resource.h.
+    ids.update({"IDOK", "IDCANCEL", "IDC_STATIC", "IDABORT", "IDRETRY",
+                "IDIGNORE", "IDYES", "IDNO", "IDHELP",
+                "ID_HELP", "ID_CONTEXT_HELP", "ID_DEFAULT_HELP",
+                "ID_APP_ABOUT", "ID_APP_EXIT", "ID_FILE_NEW", "ID_FILE_OPEN",
+                "ID_FILE_SAVE", "ID_FILE_SAVE_AS", "ID_EDIT_COPY",
+                "ID_EDIT_CUT", "ID_EDIT_PASTE", "ID_EDIT_UNDO"})
+    return ids
+
+
+def declarations(sources):
+    """class name -> set of afx_msg member names, from headers and sources."""
+    found = {}
+    for path in sources:
+        text = strip_comments(read(path))
+        for match in re.finditer(r"class\s+(\w+)\s*:\s*public\s+\w+\s*\{", text):
+            name = match.group(1)
+            body, depth, i = [], 0, match.end() - 1
+            while i < len(text):
+                if text[i] == "{":
+                    depth += 1
+                elif text[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                body.append(text[i])
+                i += 1
+            members = set(re.findall(r"afx_msg[^;]*?\b(\w+)\s*\(", "".join(body)))
+            found.setdefault(name, set()).update(members)
+    return found
+
+
+def definitions(text):
+    """class name -> set of member functions defined in this translation unit."""
+    found = {}
+    for match in re.finditer(r"\b(\w+)::(\w+)\s*\(", text):
+        found.setdefault(match.group(1), set()).add(match.group(2))
+    return found
+
+
+def message_maps(text):
+    """class name -> list of (macro, args, line number)."""
+    maps = {}
+    for match in re.finditer(r"BEGIN_MESSAGE_MAP\s*\(\s*(\w+)\s*,\s*(\w+)\s*\)(.*?)END_MESSAGE_MAP",
+                             text, flags=re.S):
+        name = match.group(1)
+        line0 = text[:match.start()].count("\n") + 1
+        entries = []
+        for offset, line in enumerate(match.group(3).splitlines()):
+            entry = re.match(r"\s*(ON_\w+)\s*\(([^)]*)\)", line)
+            if entry:
+                args = [a.strip() for a in entry.group(2).split(",") if a.strip()]
+                entries.append((entry.group(1), args, line0 + offset))
+        maps.setdefault(name, []).extend(entries)
+    return maps
+
+
+def ddx_ids(text):
+    return set(re.findall(r"DDX_\w+\s*\(\s*pDX\s*,\s*(\w+)", text))
+
+
+def check(sources, header_paths, resource_path):
+    problems = []
+    notes = []
+
+    ids = resource_ids(resource_path)
+    decls = declarations(sources + header_paths)
+
+    for path in sources:
+        raw = read(path)
+        text = strip_comments(raw)
+        defs = definitions(text)
+        maps = message_maps(text)
+        rel = os.path.relpath(path, ROOT)
+
+        used = {}
+        for cls, entries in maps.items():
+            seen = set()
+            for macro, args, line in entries:
+                handler = None
+                control = None
+
+                if macro in WM_HANDLERS:
+                    handler = WM_HANDLERS[macro]
+                elif macro in CONTROL_MACROS:
+                    hidx, cidx = CONTROL_MACROS[macro]
+                    if len(args) > hidx:
+                        handler = args[hidx]
+                    if cidx is not None and len(args) > cidx:
+                        control = args[cidx]
+                elif macro.startswith("ON_WM_"):
+                    notes.append("%s:%d: %s not in the table, entry not checked"
+                                 % (rel, line, macro))
+                    continue
+                else:
+                    notes.append("%s:%d: %s not in the table, entry not checked"
+                                 % (rel, line, macro))
+                    continue
+
+                key = (macro, tuple(args[:2]))
+                if key in seen:
+                    problems.append("%s:%d: duplicate entry %s(%s)"
+                                    % (rel, line, macro, ", ".join(args)))
+                seen.add(key)
+
+                if control and control not in ids:
+                    problems.append("%s:%d: %s uses unknown control ID %s"
+                                    % (rel, line, macro, control))
+
+                if handler and "::" in handler:
+                    # A handler inherited from the base class, such as
+                    # ON_COMMAND(ID_HELP, CWinApp::OnHelp). Nothing to check
+                    # in this class.
+                    notes.append("%s:%d: %s handled by the base class, not checked"
+                                 % (rel, line, handler))
+                    continue
+
+                if handler:
+                    handler = handler.lstrip("&")
+                    used.setdefault(cls, set()).add(handler)
+                    if handler not in decls.get(cls, set()):
+                        problems.append("%s:%d: %s is mapped but not declared "
+                                        "as afx_msg in %s" % (rel, line, handler, cls))
+                    if handler not in defs.get(cls, set()):
+                        problems.append("%s:%d: %s is mapped but not defined in %s"
+                                        % (rel, line, handler, cls))
+
+        for cls, members in decls.items():
+            if cls not in maps:
+                continue
+            for member in sorted(members - used.get(cls, set())):
+                problems.append("%s: %s::%s is declared afx_msg but no message "
+                                "map entry refers to it" % (rel, cls, member))
+
+        for control in sorted(ddx_ids(text)):
+            if control not in ids:
+                problems.append("%s: DDX uses unknown control ID %s" % (rel, control))
+
+    return problems, notes
+
+
+def main():
+    argv = sys.argv[1:]
+    sources = [os.path.join(ROOT, p) for p in (argv or DEFAULT_SOURCES)]
+    headers = [os.path.join(ROOT, p) for p in ("FilterKeysSetterDlg.h", "FilterKeysSetter.h")]
+    resource = os.path.join(ROOT, "resource.h")
+
+    missing = [p for p in sources + headers + [resource] if not os.path.isfile(p)]
+    if missing:
+        for path in missing:
+            print("missing: %s" % path)
+        return 1
+
+    problems, notes = check(sources, headers, resource)
+
+    for note in notes:
+        print("note: %s" % note)
+    for problem in problems:
+        print("PROBLEM: %s" % problem)
+
+    print("%d problem(s)" % len(problems))
+    return 1 if problems else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
