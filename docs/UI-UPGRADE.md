@@ -314,6 +314,38 @@ member of either dialog. Both the main window and the About box call it from
 their own two-line `NM_CUSTOMDRAW` handler, so the *OK* button in the About
 box cannot drift away from the eight buttons in the main window.
 
+## Installer audit
+
+`FilterKeysSetter.Setup.vdproj` carries a list of "detected dependencies" that
+Visual Studio collected years ago. Two of them are worth knowing about.
+
+**The seven `api-ms-win-crt-*.dll` files are now excluded.** They are APISet
+forwarders of the Universal CRT, and the installer shipped seven of them
+without `ucrtbase.dll`, which they forward to. Microsoft's guidance is
+explicit: the UCRT is an operating system component, app-local deployment is
+supported but discouraged, and **on Windows 10 and 11 the copy in the system
+directory is always used, even when the application ships a newer one**. So
+those seven files were dead weight on every supported Windows version, and on
+an older one the incomplete set could not have worked either. They are set to
+`Exclude = TRUE` rather than deleted, so the entries can be switched back on
+in the IDE if someone ever needs a Windows 7 package.
+
+`VCRUNTIME140.dll`, `VCRUNTIME140_1.dll` and `mfc140u.dll` stay in the
+package. Those are genuinely redistributable, they make the MSI work without
+a separately installed VC++ redistributable, and their names do not change
+under the v145 toolset: MSVC 14.50 keeps binary compatibility with everything
+back to 2015 and still ships as the **v14** runtime family.
+
+**The packaged executable is hard-coded to `..\x64\Release\FilterKeysSetter.exe`.**
+It is a plain file reference, not *Primary output from FilterKeysSetter
+(Active)*. Consequences: building the setup in `Debug` or for `Win32` still
+packages the x64 release binary, and building it without an x64 release build
+present fails. This has not been changed here, because replacing a file
+reference with a project output means hand-editing GUID-keyed blocks in a
+format no tool validates. In the IDE it is three clicks: remove the file from
+*Application Folder*, *Add → Project Output → Primary output*, then re-point
+the shortcut at it.
+
 ## Known trade-offs
 
 **Check boxes, radio buttons and group boxes look flat in the dark theme.**
