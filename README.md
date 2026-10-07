@@ -11,11 +11,12 @@
 Original version 1.02 from Soarer's article [FilterKeys Setter... for a faster key repeat (in Windows)](https://geekhack.org/index.php?topic=41881.0).
 
 # Version history
-* 1.11 2026-10-06 Dark theme with repeat sliders, tooltips for every setting,
-  Segoe UI dialog font, system DPI awareness, new application icon and logo,
-  CI build workflow for Win32 and x64; MFC Feature Pack headers dropped,
-  installer upgraded to a proper major upgrade, builds with both Visual Studio
-  2022 and Visual Studio 2026
+* 1.11 2026-10-07 Dark theme with repeat sliders, tool tips on every setting,
+  Alt accelerators on every control, Segoe UI dialog font, system DPI
+  awareness, new application icon and logo; several failure paths fixed that
+  silently zeroed the settings when a system read failed; MFC Feature Pack
+  headers dropped, installer upgraded to a proper major upgrade, builds with
+  both Visual Studio 2022 and Visual Studio 2026
 * 1.10 2024-01-28 No changes - Visual Studio 2022 build
 * 1.02 2013-10-30 Soarer's release
 
@@ -75,9 +76,25 @@ The `FilterKeysSetter.Setup` project needs the free
 extension, version 3.0.0 or newer for VS 2026. Without it the solution still opens and the
 application still builds; only the `.vdproj` fails to load.
 
-Every push and pull request is built for both `Win32` and `x64` by the
-[build workflow](.github/workflows/build.yml), which publishes the resulting
-`FilterKeysSetter.exe` as a downloadable artifact.
+A build workflow for both `Win32` and `x64` is prepared in
+`.github/workflows/build.yml`, but it is **not active yet**: it exists only in
+the working tree of the branch, because the account that produced these
+changes cannot push workflow files. Until someone commits it, the badge above
+stays grey and nothing here has been compiled in CI.
+
+## Checks that do run anywhere
+
+Five Python scripts stand in for the compiler while no toolchain is
+available. They need nothing but a Python 3 install and take under a second
+together:
+
+```cmd
+python tools\check-dialog-layout.py    :: geometry, captions, accelerators, tab stops
+python tools\check-message-map.py      :: MFC message maps, DDX and tool tip wiring
+python tools\check-resources.py        :: resource IDs, the icon container, versions
+python tools\check-error-handling.py   :: Win32 results that are thrown away
+python tools\selftest.py               :: breaks the sources on purpose to test the four above
+```
 
 # Usage
 
