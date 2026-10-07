@@ -807,10 +807,23 @@ void CFilterKeysSetterDlg::UpdateFlagVal()
 	m_staticFlagVal.SetWindowText(s);
 }
 
+// 122 and 59 were written as plain numbers; spelling them out costs nothing
+// and says which switches they actually stand for.
+namespace
+{
+	// Everything except FilterKeys itself and the right-Shift shortcut.
+	const DWORD kDefaultFlags = FKF_AVAILABLE | FKF_CONFIRMHOTKEY
+		| FKF_HOTKEYSOUND | FKF_INDICATOR | FKF_CLICKON;            // 122
+
+	// The same, with FilterKeys on and the key click off.
+	const DWORD kKeyboardFlags = FKF_FILTERKEYSON | FKF_AVAILABLE
+		| FKF_CONFIRMHOTKEY | FKF_HOTKEYSOUND | FKF_INDICATOR;      // 59
+}
+
 void CFilterKeysSetterDlg::OnBnClickedSetDefaults()
 {
 	FILTERKEYS filter_keys = { sizeof(FILTERKEYS) };
-	filter_keys.dwFlags = 122;
+	filter_keys.dwFlags = kDefaultFlags;
 	filter_keys.iWaitMSec = 1000;
 	filter_keys.iDelayMSec = 1000;
 	filter_keys.iRepeatMSec = 500;
@@ -825,17 +838,26 @@ void CFilterKeysSetterDlg::OnEnChangeRepeatEdit()
 
 void CFilterKeysSetterDlg::OnBnClickedSetNormal()
 {
+	// Both reads were unchecked. On failure the variables stay 0, which is a
+	// perfectly plausible pair of values -- 500 ms repeat, 250 ms delay --
+	// so the dialog would have presented an invention as "the Windows
+	// keyboard settings".
 	int speed = 0;
-	SystemParametersInfo(SPI_GETKEYBOARDSPEED, 0, &speed, 0);
+	int delay = 0;
+	if (!SystemParametersInfo(SPI_GETKEYBOARDSPEED, 0, &speed, 0)
+	    || !SystemParametersInfo(SPI_GETKEYBOARDDELAY, 0, &delay, 0)) {
+		ErrorBox(_T("The Windows keyboard settings could not be read."));
+		return;
+	}
+
+	// The control panel slider runs 0..31 over roughly 2..30 characters per
+	// second; the delay setting is 0..3 in steps of 250 ms starting at 250.
 	double chars_per_sec = speed * (30.0 - 2.0) / 31.0 + 2.0;
 	int repeat_ms = (int)floor(1000.0 / chars_per_sec + 0.5);
-
-	int delay = 0;
-	SystemParametersInfo(SPI_GETKEYBOARDDELAY, 0, &delay, 0);
 	int delay_ms = delay * 250 + 250;
 
 	FILTERKEYS filter_keys = { sizeof(FILTERKEYS) };
-	filter_keys.dwFlags = 59;
+	filter_keys.dwFlags = kKeyboardFlags;
 	filter_keys.iDelayMSec = delay_ms;
 	filter_keys.iRepeatMSec = repeat_ms;
 	SetValues(filter_keys);
@@ -908,7 +930,7 @@ void CFilterKeysSetterDlg::OnBnClickedSetRegistry()
 		GetNumericStringRegKey(hKey, L"AutoRepeatDelay", filter_keys.iDelayMSec, 1000);
 		GetNumericStringRegKey(hKey, L"AutoRepeatRate", filter_keys.iRepeatMSec, 500);
 		GetNumericStringRegKey(hKey, L"BounceTime", filter_keys.iBounceMSec, 0);
-		GetNumericStringRegKey(hKey, L"Flags", filter_keys.dwFlags, 122);
+		GetNumericStringRegKey(hKey, L"Flags", filter_keys.dwFlags, kDefaultFlags);
 		RegCloseKey(hKey);
 		SetValues(filter_keys);
 	}

@@ -532,6 +532,24 @@ have destroyed settings rather than reporting a problem:
   remembered in `m_bHaveOriginal`; if the read failed the button is disabled
   in `OnInitDialog` and the handler refuses a stray click as well.
 
+**A third read had the same shape.** *Keyboard* calls `SPI_GETKEYBOARDSPEED`
+and `SPI_GETKEYBOARDDELAY` and checked neither. On failure both variables
+stay 0, and 0 is not an obviously wrong value here -- it comes out as a
+500 ms repeat and a 250 ms delay, a plausible pair that the dialog would
+then have presented as "the standard Windows keyboard settings". It now
+reports the failure and changes nothing.
+
+While in there, the two flag constants stopped being magic numbers:
+
+| Was | Is | Meaning |
+| --- | --- | --- |
+| `dwFlags = 122` | `kDefaultFlags` | `FKF_AVAILABLE \| FKF_CONFIRMHOTKEY \| FKF_HOTKEYSOUND \| FKF_INDICATOR \| FKF_CLICKON` |
+| `dwFlags = 59` | `kKeyboardFlags` | `FKF_FILTERKEYSON \| FKF_AVAILABLE \| FKF_CONFIRMHOTKEY \| FKF_HOTKEYSOUND \| FKF_INDICATOR` |
+
+Both sums were checked against the `FKF_*` values before the swap, and
+`kDefaultFlags` is now also the fallback for a missing `Flags` value in the
+registry -- which is what the literal 122 there had always meant.
+
 The success path is byte for byte what it was: same calls, same arguments,
 same order.
 
