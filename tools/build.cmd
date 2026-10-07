@@ -1,4 +1,4 @@
-@echo off
+﻿@echo off
 setlocal enabledelayedexpansion
 rem ---------------------------------------------------------------------------
 rem build.cmd -- find the installed Visual Studio, build FilterKeysSetter and
@@ -10,12 +10,30 @@ rem
 rem   tools\build.cmd              build Release for Win32 and x64
 rem   tools\build.cmd x64          build Release for x64 only
 rem   tools\build.cmd x64 Debug    build Debug for x64 only
+rem   tools\build.cmd x64 Debug v143   pin a toolset when several are present
 rem ---------------------------------------------------------------------------
 
 set "PLATFORMS=Win32 x64"
 if not "%~1"=="" set "PLATFORMS=%~1"
 set "CONFIGURATION=Release"
 if not "%~2"=="" set "CONFIGURATION=%~2"
+
+rem The solution calls the 32-bit platform x86, the project calls it Win32.
+rem This script builds the project, so accept both spellings.
+if /i "%PLATFORMS%"=="x86" set "PLATFORMS=Win32"
+if /i "%PLATFORMS%"=="win32" set "PLATFORMS=Win32"
+if /i "%PLATFORMS%"=="x64" set "PLATFORMS=x64"
+
+for %%p in (%PLATFORMS%) do (
+    if /i not "%%p"=="Win32" if /i not "%%p"=="x64" (
+        echo [!] Unknown platform "%%p". The project knows Win32 and x64.
+        exit /b 1
+    )
+)
+if /i not "%CONFIGURATION%"=="Debug" if /i not "%CONFIGURATION%"=="Release" (
+    echo [!] Unknown configuration "%CONFIGURATION%". Use Debug or Release.
+    exit /b 1
+)
 
 pushd "%~dp0.."
 
@@ -53,7 +71,11 @@ if not defined MSBUILD (
 rem MFC is not part of the "Desktop development with C++" workload. Without it
 rem the build dies at afxwin.h, which is the single most common failure here.
 set "MFCDIR="
-for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -prerelease -products * -requires Microsoft.VisualStudio.Component.VC.ATLMFC -property installationPath 2^>nul`) do (
+rem The id is the same in VS 2022 and VS 2026 -- only the display name changes
+rem ("latest v143" vs "latest v145"). The Spectre variant counts as well, and
+rem -requiresAny makes either one enough. A side-by-side MFC installed under a
+rem versioned id is not recognised, so this stays a warning, never a refusal.
+for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -prerelease -products * -requiresAny -requires Microsoft.VisualStudio.Component.VC.ATLMFC Microsoft.VisualStudio.Component.VC.ATLMFC.Spectre -property installationPath 2^>nul`) do (
     if not defined MFCDIR set "MFCDIR=%%i"
 )
 
@@ -77,10 +99,14 @@ echo.
 rem The project is built directly instead of the solution: FilterKeysSetter.Setup
 rem is a .vdproj and needs the Visual Studio Installer Projects extension, which
 rem has nothing to do with whether the application itself compiles.
+set "TOOLSET="
+if not "%~3"=="" set "TOOLSET=/p:PlatformToolset=%~3"
+if defined TOOLSET echo Toolset       : %~3
+
 set "FAILED="
 for %%p in (%PLATFORMS%) do (
     echo === %CONFIGURATION% ^| %%p ===========================================
-    "%MSBUILD%" FilterKeysSetter.vcxproj /nologo /m /t:Rebuild /p:Configuration=%CONFIGURATION% /p:Platform=%%p /verbosity:minimal /fileLogger "/fileLoggerParameters:LogFile=build-%CONFIGURATION%-%%p.log;Verbosity=normal"
+    "%MSBUILD%" FilterKeysSetter.vcxproj /nologo /m /t:Rebuild /p:Configuration=%CONFIGURATION% /p:Platform=%%p !TOOLSET! /verbosity:minimal /fileLogger "/fileLoggerParameters:LogFile=build-%CONFIGURATION%-%%p.log;Verbosity=normal"
     if errorlevel 1 (
         set "FAILED=1"
         echo [!] %CONFIGURATION% ^| %%p FAILED

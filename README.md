@@ -70,9 +70,13 @@ in 2026, which no longer ships `v143`).
   every error and warning at the end. Logs land in `build-Release-<platform>.log`.
 
   ```cmd
-  tools\build.cmd            :: both platforms
-  tools\build.cmd x64 Debug  :: one platform and configuration
+  tools\build.cmd                 :: both platforms, Release
+  tools\build.cmd x64 Debug       :: one platform and configuration
+  tools\build.cmd x64 Release v143 :: pin a toolset when several are installed
   ```
+
+  It accepts `x86` as a synonym for `Win32` and rejects anything else with a
+  sentence instead of an MSBuild error code.
 
 The `FilterKeysSetter.Setup` project needs the free
 [Microsoft Visual Studio Installer Projects](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)

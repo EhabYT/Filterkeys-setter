@@ -498,6 +498,26 @@ Expected output: `3 file(s), 0 problem(s)`. The self test covers both
 directions: dropping a real check is caught, and so is removing the `(void)`
 marker.
 
+## The build script itself
+
+`tools\build.cmd` is the first thing anyone will run on a Windows machine,
+and it has never been executed either, so it was read line by line with the
+same suspicion as the C++:
+
+- **It only accepted `Win32`.** Someone who has just read that the solution
+  calls the platform `x86` would pass `x86` and get an MSBuild error about an
+  invalid project configuration. `x86` is now accepted as a synonym, and any
+  other value is refused with a sentence that names the two valid ones --
+  likewise for the configuration.
+- **The MFC probe asked for one component id.** It now asks with
+  `-requiresAny` for `...VC.ATLMFC` and `...VC.ATLMFC.Spectre`. The id is the
+  same in VS 2022 and VS 2026; only its display name changes between
+  *latest v143* and *latest v145*. A side-by-side MFC under a versioned id is
+  still not recognised, which is why the result stays a warning and never
+  stops the build.
+- **A third argument pins the toolset**, `tools\build.cmd x64 Release v143`,
+  for machines with both Visual Studio versions installed.
+
 ## Pre-build check of the project files
 
 `tools/check-project.py` reads `FilterKeysSetter.sln` and
