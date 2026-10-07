@@ -387,6 +387,18 @@ Notes on the choices:
   widths. `tools/render-dialog.py` strips the `&` and underlines the marked
   character, so the preview images match what Windows draws with Alt held.
 
+Three further rules keep the accelerators honest, because all of them depend
+on z-order rather than on anything visible in the dialog editor:
+
+| Rule | Why it exists |
+| --- | --- |
+| A label accelerator must be followed by a focusable control | `RTEXT` cannot take the focus, so the accelerator is handed to the *next* control in z-order. Move a label and the shortcut silently lands somewhere else. |
+| …and that control must share the label's row | Catches exactly that case: in a mutation test, an `&` on the `ms` suffix of the delay row was reported as focusing `IDC_DELAY_SLIDER` one row below. |
+| A focusable `CONTROL` statement needs an explicit `WS_TABSTOP` | `EDITTEXT`, `PUSHBUTTON` and friends get one implicitly; `CONTROL` does not. A check box written as `CONTROL` without it drops out of the tab chain while still looking perfectly normal. The sole exception is a radio button that follows another one — those are one tab stop, and the first of them is checked for `WS_GROUP` instead. |
+
+All three were verified by mutating the `.rc` and confirming the checker
+fails, then restoring it.
+
 ## Known trade-offs
 
 **Check boxes, radio buttons and group boxes look flat in the dark theme.**

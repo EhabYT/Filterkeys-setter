@@ -9,6 +9,8 @@ hand and that otherwise only show up once the program is running:
   * controls poking out of the group box they visually belong to
   * captions too long for their control at the dialog font
   * the same Alt accelerator claimed by two controls
+  * a label accelerator that does not hand the focus to its own input
+  * a focusable CONTROL statement without WS_TABSTOP
 
 The text width model is an approximation of Segoe UI, so treat its warnings as
 "look at this in the dialog editor", not as hard failures.
@@ -95,6 +97,72 @@ def mnemonics(controls):
     return found
 
 
+STATIC_KINDS = ("LTEXT", "RTEXT", "CTEXT", "GROUPBOX", "ICON")
+
+# Window classes that can take the focus when they are written as CONTROL.
+FOCUSABLE_CLASSES = ("Button", "Edit", "ComboBox", "ListBox",
+                     "msctls_trackbar32", "msctls_updown32", "SysListView32",
+                     "SysTreeView32", "SysTabControl32")
+
+
+def is_focusable(ctl):
+    """Can the dialog manager put the focus on this control?"""
+    if ctl["kind"] in ("EDITTEXT", "PUSHBUTTON", "DEFPUSHBUTTON", "COMBOBOX",
+                       "LISTBOX", "SCROLLBAR"):
+        return True
+    if ctl["kind"] != "CONTROL":
+        return False
+    return any(('"%s"' % c) in ctl["line"] for c in FOCUSABLE_CLASSES)
+
+
+def check_focus_targets(controls):
+    """A static's accelerator moves the focus to the *next* control in z-order.
+
+    That is only useful when the next control really is the input the label
+    describes, so the pairing is checked here rather than trusted.
+    """
+    problems = []
+    for index, ctl in enumerate(controls):
+        if ctl["kind"] not in ("LTEXT", "RTEXT", "CTEXT"):
+            continue
+        letters = dict((c["id"], l) for c, l in mnemonics([ctl]))
+        if not letters:
+            continue
+        following = controls[index + 1:]
+        target = next((c for c in following if is_focusable(c)), None)
+        if target is None:
+            problems.append('%s: caption "%s" has an accelerator but no '
+                            'focusable control follows it'
+                            % (ctl["id"], ctl["text"]))
+            continue
+        if following[0] is not target:
+            problems.append('%s: accelerator jumps past %s to %s'
+                            % (ctl["id"], following[0]["id"], target["id"]))
+        lx, ly, lw, lh = ctl["rect"]
+        tx, ty, tw, th = target["rect"]
+        if min(ly + lh, ty + th) - max(ly, ty) <= 0:
+            problems.append('%s sits on row %d but its accelerator focuses %s '
+                            'on row %d' % (ctl["id"], ly, target["id"], ty))
+    return problems
+
+
+def check_tabstops(controls):
+    """CONTROL statements get no implicit WS_TABSTOP, unlike EDITTEXT & co."""
+    problems = []
+    previous_radio = False
+    for ctl in controls:
+        radio = "BS_AUTORADIOBUTTON" in ctl["line"] or "BS_RADIOBUTTON" in ctl["line"]
+        if ctl["kind"] == "CONTROL" and is_focusable(ctl):
+            if "WS_TABSTOP" not in ctl["line"] and not (radio and previous_radio):
+                problems.append("%s is focusable but has no WS_TABSTOP"
+                                % ctl["id"])
+            if radio and not previous_radio and "WS_GROUP" not in ctl["line"]:
+                problems.append("%s starts a radio group but has no WS_GROUP"
+                                % ctl["id"])
+        previous_radio = radio
+    return problems
+
+
 def overlap(a, b):
     ax, ay, aw, ah = a
     bx, by, bw, bh = b
@@ -158,6 +226,9 @@ def check(rc, name):
                             % (letter.upper(), seen[letter], ctl["id"]))
         else:
             seen[letter] = ctl["id"]
+
+    problems += check_focus_targets(controls)
+    problems += check_tabstops(controls)
 
     return width, height, len(controls), problems
 
