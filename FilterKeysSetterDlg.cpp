@@ -1,4 +1,4 @@
-﻿// FilterKeysSetterDlg.cpp : implementation file
+// FilterKeysSetterDlg.cpp : implementation file
 //
 
 #include "pch.h"
@@ -75,7 +75,19 @@ namespace
 		if (pressed) {
 			rcText.OffsetRect(1, 1);   // the usual nudge on click
 		}
-		pDC->DrawText(strText, rcText, DT_CENTER | DT_VCENTER | DT_SINGLELINE);
+
+		// Windows hides the accelerator underline until the user presses Alt
+		// or navigates with the keyboard, and tells every window about it
+		// through the UI state. DrawText underlines an & unconditionally, so
+		// without this the custom-drawn buttons would be the only controls in
+		// the dialog showing "Appl&y" underlined from the start.
+		UINT uFormat = DT_CENTER | DT_VCENTER | DT_SINGLELINE;
+		const LRESULT uiState = ::SendMessage(pcd->hdr.hwndFrom,
+			WM_QUERYUISTATE, 0, 0);
+		if ((uiState & UISF_HIDEACCEL) != 0) {
+			uFormat |= DT_HIDEPREFIX;
+		}
+		pDC->DrawText(strText, rcText, uFormat);
 
 		if (pOldFont != NULL) {
 			pDC->SelectObject(pOldFont);

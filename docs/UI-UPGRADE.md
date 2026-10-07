@@ -108,6 +108,32 @@ The theme preference is stored in a **separate** key,
 6. Delete any stale `Debug/`, `Release/`, `x64/` output; the manifest is now
    embedded and old binaries will not pick it up.
 
+## Keyboard cues on the custom-drawn buttons
+
+Adding the Alt accelerators broke something the owner-draw commit could not
+have anticipated: `DrawText` underlines the character after an `&`
+unconditionally, while Windows itself hides those underlines until the user
+presses Alt or starts navigating with the keyboard. The eight custom-drawn
+push buttons would therefore have been the only controls in the dialog
+showing `Appl`<u>`y`</u> underlined from the moment the window opened.
+
+Windows publishes that preference per window as the *UI state*. The painter
+now asks for it and suppresses the underline accordingly:
+
+```cpp
+UINT uFormat = DT_CENTER | DT_VCENTER | DT_SINGLELINE;
+const LRESULT uiState = ::SendMessage(pcd->hdr.hwndFrom, WM_QUERYUISTATE, 0, 0);
+if ((uiState & UISF_HIDEACCEL) != 0) {
+    uFormat |= DT_HIDEPREFIX;
+}
+```
+
+No extra message handler is needed: when the state changes the dialog
+manager sends `WM_UPDATEUISTATE` down the window tree and the button
+invalidates itself, which brings `NM_CUSTOMDRAW` round again with the new
+answer. Users who have *Underline access keys* switched on permanently in
+*Ease of Access* see the underlines all the time, exactly as elsewhere.
+
 ## Layout check
 
 `tools/check-dialog-layout.py` parses `FilterKeysSetter.rc` and reports controls
