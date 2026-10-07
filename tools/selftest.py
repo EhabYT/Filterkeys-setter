@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Self test for the three static checkers in this folder.
+"""Self test for the four static checkers in this folder.
 
-Every rule in check-dialog-layout.py, check-message-map.py and
-check-resources.py was originally verified the same way: break the source on
+Every rule in check-dialog-layout.py, check-message-map.py,
+check-resources.py and check-error-handling.py was originally verified the same way: break the source on
 purpose, confirm the checker notices, put it back. That verification used to
 live in the commit messages only, so a later refactor of a checker could turn
 a rule into a no-op without anything failing.
@@ -36,6 +36,7 @@ VDPROJ = os.path.join("FilterKeysSetter.Setup", "FilterKeysSetter.Setup.vdproj")
 LAYOUT = "check-dialog-layout.py"
 MAP = "check-message-map.py"
 RESOURCES = "check-resources.py"
+ERRORS = "check-error-handling.py"
 
 # (name, checker, file, text to replace, replacement, expected in the output)
 CASES = [
@@ -100,6 +101,17 @@ CASES = [
      'IDC_STATUS,6,240,216,12,SS_CENTERIMAGE | SS_ENDELLIPSIS | SS_NOTIFY',
      'IDC_STATUS,6,240,216,12,SS_CENTERIMAGE | SS_ENDELLIPSIS',
      "the static has no"),
+
+    # -- check-error-handling.py -----------------------------------------
+    ("SystemParametersInfo result dropped", ERRORS, DLG,
+     "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",
+     "\tSystemParametersInfo(SPI_GETFILTERKEYS,",
+     "the result of SystemParametersInfo is thrown away"),
+
+    ("deliberate (void) marker removed", ERRORS, "Theme.cpp",
+     "(void)::RegSetValueEx(",
+     "::RegSetValueEx(",
+     "the result of RegSetValueEx is thrown away"),
 
     # -- check-resources.py ----------------------------------------------
     ("two symbols sharing a numeric value", RESOURCES, RES,
@@ -209,7 +221,7 @@ def main():
         copy_tree(sandbox)
 
         # A mutation test only means something if the baseline is clean.
-        for checker in (LAYOUT, MAP, RESOURCES):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("baseline: %s already fails:\n%s"
@@ -260,7 +272,7 @@ def main():
                 print("ok  %-48s %s" % (name, RESOURCES))
 
         # Nothing may be left behind in the scratch copy.
-        for checker in (LAYOUT, MAP, RESOURCES):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("after restoring, %s fails:\n%s"

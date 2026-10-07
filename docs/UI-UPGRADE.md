@@ -469,6 +469,35 @@ the file named in the `.rc` is missing, when it does not parse, or when the
 16, 32, 48 or 256 px frame is absent. Frames below 32 bpp and an
 uncompressed 256 px frame are reported as notes.
 
+## Checking that Win32 results are not dropped
+
+Three of the bugs above were the same bug: a Win32 read whose result nobody
+looked at, followed by code using a buffer the call had never filled. The
+buffer is zeroed, and zero is a plausible timing, so the dialog showed an
+invention instead of a system setting. That pattern is now a rule rather
+than a memory.
+
+`tools/check-error-handling.py` flags calls to `SystemParametersInfo` and the
+`Reg*` family that stand alone as a statement with nothing done to their
+result. Ignoring a result is occasionally right -- failing to store the theme
+preference only means the next start opens in the default theme -- so an
+explicit `(void)` cast marks that as a decision:
+
+```cpp
+// Deliberately unchecked: if the preference cannot be stored the next start
+// simply opens in the default theme.
+(void)::RegSetValueEx(hKey, kThemeValue, 0, REG_DWORD, ...);
+```
+
+That is the only such call in the project; everything else is checked. The
+MFC wrappers that share a name with a Win32 function (`CWnd::GetClientRect`
+and friends) return `void` and are deliberately not in the list -- a bare
+call is the only way to write them.
+
+Expected output: `3 file(s), 0 problem(s)`. The self test covers both
+directions: dropping a real check is caught, and so is removing the `(void)`
+marker.
+
 ## Self test for the checkers
 
 Three checkers now gate this repository, and each of their rules was verified
@@ -483,8 +512,8 @@ nobody would notice that they had stopped checking.
 python tools\selftest.py -v
 ```
 
-It copies the tree into a scratch directory, confirms all three checkers are
-clean on the untouched copy, then applies **22 mutations** one at a time --
+It copies the tree into a scratch directory, confirms all four checkers are
+clean on the untouched copy, then applies **24 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -495,7 +524,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `22 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `24 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -608,9 +637,9 @@ the mode. Users can also clear the preference themselves by deleting
 ## Still open
 
 `.github/workflows/build.yml` replaces the unusable CMake-on-Ubuntu starter
-workflow with the four static checks on Ubuntu --
-`check-dialog-layout.py`, `check-message-map.py`, `check-resources.py` and
-`selftest.py` -- plus MSBuild on both `windows-2022` (VS 2022, v143) and
+workflow with the five static checks on Ubuntu --
+`check-dialog-layout.py`, `check-message-map.py`, `check-resources.py`,
+`check-error-handling.py` and `selftest.py` -- plus MSBuild on both `windows-2022` (VS 2022, v143) and
 `windows-2025` (VS 2026, v145), for `Win32` and `x64`. It could not be
 pushed: GitHub rejects workflow files from an app without the `workflows`
 permission. Until it lands, none of the above has been compiled in CI, and
@@ -623,6 +652,6 @@ python tools\check-resources.py
 python tools\selftest.py
 ```
 
-The expected output is four clean runs: two `ok` lines, `0 problem(s)` with
-a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)` and
-`22 case(s), 0 failure(s)`. Anything else is a regression.
+The expected output is five clean runs: two `ok` lines, `0 problem(s)` with
+a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
+`3 file(s), 0 problem(s)` and `24 case(s), 0 failure(s)`. Anything else is a regression.

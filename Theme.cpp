@@ -93,8 +93,11 @@ void CTheme::SavePreference(ThemeMode mode)
 	if (::RegCreateKeyEx(HKEY_CURRENT_USER, kSettingsKey, 0, NULL, REG_OPTION_NON_VOLATILE,
 	                     KEY_WRITE, NULL, &hKey, &dwDisposition) == ERROR_SUCCESS) {
 		DWORD dwValue = (mode == ThemeMode::Dark) ? 1 : 0;
-		::RegSetValueEx(hKey, kThemeValue, 0, REG_DWORD,
-		                reinterpret_cast<const BYTE*>(&dwValue), sizeof(dwValue));
+		// Deliberately unchecked: if the preference cannot be stored the
+		// next start simply opens in the default theme, which is not worth
+		// interrupting the user for.
+		(void)::RegSetValueEx(hKey, kThemeValue, 0, REG_DWORD,
+		                      reinterpret_cast<const BYTE*>(&dwValue), sizeof(dwValue));
 		::RegCloseKey(hKey);
 	}
 }
