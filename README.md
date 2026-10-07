@@ -28,6 +28,12 @@ icon: a navy background that deepens from `#2A4A7B` through `#1F3A61` to
 light look; the choice is remembered in
 `HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme`.
 
+Every control can be reached from the keyboard: hold `Alt` to see the
+underlined accelerators (`Alt`+`D` for the repeat delay, `Alt`+`K` for the
+*Keyboard* preset, `Alt`+`P` for *Apply*, and so on), `Tab` walks the groups,
+`Enter` confirms, `Esc` cancels. The full table is in
+[docs/UI-UPGRADE.md](docs/UI-UPGRADE.md#keyboard-accelerators).
+
 The repeat delay and repeat rate can be dialled in with sliders as well as
 typed as exact millisecond values -- the two stay in sync, and the edit box
 remains authoritative for values outside the slider range.

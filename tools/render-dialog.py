@@ -129,6 +129,23 @@ def parse_dialog(rc_text, name):
             caption.group(1) if caption else "", controls)
 
 
+def split_mnemonic(text):
+    """'Sa&ve' -> ('Save', 2). Returns -1 when the caption has no & marker."""
+    out, idx, i = [], -1, 0
+    while i < len(text):
+        if text[i] == "&" and i + 1 < len(text):
+            if text[i + 1] == "&":
+                out.append("&")
+                i += 2
+                continue
+            idx = len(out)
+            i += 1
+            continue
+        out.append(text[i])
+        i += 1
+    return "".join(out), idx
+
+
 class Canvas:
     def __init__(self, width_dlu, height_dlu, pal):
         self.k = SCALE * SS
@@ -151,6 +168,25 @@ class Canvas:
 
     def px(self, n):
         return n * self.k
+
+    def label(self, xy, text, anchor, colour, font=None):
+        """Draws a caption, underlining the character marked with &."""
+        font = font or self.font
+        clean, idx = split_mnemonic(text)
+        x, y = xy
+        self.d.text((x, y), clean, font=font, fill=colour, anchor=anchor)
+        if idx < 0:
+            return
+        width = self.d.textlength(clean, font=font)
+        if anchor[0] == "r":
+            x -= width
+        elif anchor[0] == "m":
+            x -= width / 2
+        before = self.d.textlength(clean[:idx], font=font)
+        glyph = self.d.textlength(clean[idx], font=font)
+        baseline = y + (font.size * 0.42 if anchor[1] == "m" else font.size * 0.95)
+        self.d.line([(x + before, baseline), (x + before + glyph, baseline)],
+                    fill=colour, width=max(1, self.k // 3))
 
     # -- painting ---------------------------------------------------------
     def _gradient(self, t):
@@ -184,11 +220,11 @@ class Canvas:
         font = font or self.font
         y = (y0 + y1) / 2
         if align == "right":
-            self.d.text((x1, y), s, font=font, fill=colour, anchor="rm")
+            self.label((x1, y), s, "rm", colour, font)
         elif align == "center":
-            self.d.text(((x0 + x1) / 2, y), s, font=font, fill=colour, anchor="mm")
+            self.label(((x0 + x1) / 2, y), s, "mm", colour, font)
         else:
-            self.d.text((x0, y), s, font=font, fill=colour, anchor="lm")
+            self.label((x0, y), s, "lm", colour, font)
 
     def groupbox(self, rect, caption):
         x0, y0, x1, y1 = self.box(rect)
@@ -219,8 +255,7 @@ class Canvas:
         self.d.rectangle([x0, y0, x1, y1], fill=self.pal["surface"],
                          outline=self.pal["accent"] if default else self.pal["disabled"],
                          width=max(1, self.k // 2) * (2 if default else 1))
-        self.d.text(((x0 + x1) / 2, (y0 + y1) / 2), caption, font=self.font,
-                    fill=self.pal["text"], anchor="mm")
+        self.label(((x0 + x1) / 2, (y0 + y1) / 2), caption, "mm", self.pal["text"])
 
     def checkbox(self, rect, caption, checked):
         x0, y0, x1, y1 = self.box(rect)
@@ -237,8 +272,7 @@ class Canvas:
                          (bx0 + side * 0.80, by0 + side * 0.26)],
                         fill=(0xFF, 0xFF, 0xFF) if self.pal is DARK else (0xFF, 0xFF, 0xFF),
                         width=max(2, self.k))
-        self.d.text((bx0 + side + self.px(5), cy), caption, font=self.font,
-                    fill=self.pal["text"], anchor="lm")
+        self.label((bx0 + side + self.px(5), cy), caption, "lm", self.pal["text"])
 
     def radio(self, rect, caption, selected):
         x0, y0, x1, y1 = self.box(rect)
@@ -257,7 +291,8 @@ class Canvas:
                       x1 - (x0 + side + self.px(5)))
 
     def _wrapped(self, caption, x, y, width):
-        words, line, lines = caption.split(), "", []
+        clean, idx = split_mnemonic(caption)
+        words, line, lines = clean.split(), "", []
         for word in words:
             probe = (line + " " + word).strip()
             if self.d.textlength(probe, font=self.font) <= width:
@@ -266,9 +301,19 @@ class Canvas:
                 lines.append(line)
                 line = word
         lines.append(line)
+        consumed = 0
         for i, text in enumerate(lines):
             self.d.text((x, y + i * self.px(9)), text, font=self.font,
                         fill=self.pal["text"], anchor="la")
+            # The & may sit on any of the wrapped lines; underline it there.
+            if 0 <= idx - consumed < len(text):
+                local = idx - consumed
+                before = self.d.textlength(text[:local], font=self.font)
+                glyph = self.d.textlength(text[local], font=self.font)
+                baseline = y + i * self.px(9) + self.font.size * 0.95
+                self.d.line([(x + before, baseline), (x + before + glyph, baseline)],
+                            fill=self.pal["text"], width=max(1, self.k // 3))
+            consumed += len(text) + 1
 
     def slider(self, rect, position):
         x0, y0, x1, y1 = self.box(rect)

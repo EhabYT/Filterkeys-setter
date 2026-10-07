@@ -44,54 +44,54 @@ FONT 9, "Segoe UI", 400, 0, 0x1
 BEGIN
     // The two radio buttons must stay adjacent in z-order: DDX_Radio walks the
     // controls following IDC_IGNORE_QUICK until it meets the next WS_GROUP.
-    CONTROL         "Ignore quick keystrokes and/or set the repeat rate",IDC_IGNORE_QUICK,
+    CONTROL         "Ignore &quick keystrokes and/or set the repeat rate",IDC_IGNORE_QUICK,
                     "Button",BS_AUTORADIOBUTTON | BS_MULTILINE | WS_GROUP | WS_TABSTOP,12,16,108,20
-    CONTROL         "Ignore keystrokes repeated faster than:",IDC_IGNORE_REPEATED,
+    CONTROL         "Ignore keystrokes repeated &faster than:",IDC_IGNORE_REPEATED,
                     "Button",BS_AUTORADIOBUTTON | BS_MULTILINE,12,130,108,18
 
     // Every input is preceded by its label so that screen readers derive the
     // accessible name from it.
-    RTEXT           "Ignore under:",IDC_STATIC,24,40,48,12,SS_CENTERIMAGE
+    RTEXT           "&Ignore under:",IDC_STATIC,24,40,48,12,SS_CENTERIMAGE
     EDITTEXT        IDC_WAIT_EDIT,78,40,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
     RTEXT           "ms",IDC_STATIC,108,40,12,12,SS_CENTERIMAGE
 
-    RTEXT           "Repeat delay:",IDC_STATIC,24,56,48,12,SS_CENTERIMAGE
+    RTEXT           "Repeat &delay:",IDC_STATIC,24,56,48,12,SS_CENTERIMAGE
     EDITTEXT        IDC_DELAY_EDIT,78,56,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
     RTEXT           "ms",IDC_STATIC,108,56,12,12,SS_CENTERIMAGE
     CONTROL         "",IDC_DELAY_SLIDER,"msctls_trackbar32",TBS_NOTICKS | WS_TABSTOP,24,70,96,12
 
-    RTEXT           "Repeat rate:",IDC_STATIC,24,86,48,12,SS_CENTERIMAGE
+    RTEXT           "Repeat &rate:",IDC_STATIC,24,86,48,12,SS_CENTERIMAGE
     EDITTEXT        IDC_REPEAT_EDIT,78,86,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
     RTEXT           "ms",IDC_STATIC,108,86,12,12,SS_CENTERIMAGE
     CONTROL         "",IDC_REPEAT_SLIDER,"msctls_trackbar32",TBS_NOTICKS | WS_TABSTOP,24,100,96,12
 
     RTEXT           "cps",IDC_CHARS_PER_SEC,42,114,78,12,SS_CENTERIMAGE | SS_NOTIFY
 
-    RTEXT           "Bounce time:",IDC_STATIC,24,152,48,12,SS_CENTERIMAGE
+    RTEXT           "Bounce ti&me:",IDC_STATIC,24,152,48,12,SS_CENTERIMAGE
     EDITTEXT        IDC_BOUNCE_EDIT,78,152,30,12,ES_AUTOHSCROLL | ES_NUMBER | WS_GROUP
     RTEXT           "ms",IDC_STATIC,108,152,12,12,SS_CENTERIMAGE
 
-    CONTROL         "On",IDC_ON,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,16,76,12
-    CONTROL         "Available",IDC_AVAILABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,28,76,12
-    CONTROL         "Use shortcut",IDC_HOTKEYACTIVE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,40,76,12
-    CONTROL         "Confirm activation",IDC_CONFIRMHOTKEY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,52,76,12
-    CONTROL         "Activation sound",IDC_HOTKEYSOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,64,76,12
-    CONTROL         "Show status",IDC_INDICATOR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,76,76,12
-    CONTROL         "Key click",IDC_CLICK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,88,76,12
+    CONTROL         "&On",IDC_ON,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,16,76,12
+    CONTROL         "&Available",IDC_AVAILABLE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,28,76,12
+    CONTROL         "&Use shortcut",IDC_HOTKEYACTIVE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,40,76,12
+    CONTROL         "&Confirm activation",IDC_CONFIRMHOTKEY,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,52,76,12
+    CONTROL         "Activation &sound",IDC_HOTKEYSOUND,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,64,76,12
+    CONTROL         "S&how status",IDC_INDICATOR,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,76,76,12
+    CONTROL         "Ke&y click",IDC_CLICK,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,88,76,12
     LTEXT           "flagval",IDC_FLAGVAL,144,100,76,12,SS_CENTERIMAGE | SS_NOTIFY
 
-    CONTROL         "Save to registry",IDC_UPDATEINIFILE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,132,76,12
-    CONTROL         "Broadcast change",IDC_SENDCHANGE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,144,76,12
+    CONTROL         "Sa&ve to registry",IDC_UPDATEINIFILE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,132,76,12
+    CONTROL         "&Broadcast change",IDC_SENDCHANGE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,144,144,76,12
 
     // Sits next to the OK row rather than in a group box of its own: one check
     // box did not justify 26 vertical DLU of frame and caption.
-    CONTROL         "Dark theme",IDC_DARKTHEME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,6,257,54,12
+    CONTROL         "Dark &theme",IDC_DARKTHEME,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,6,257,54,12
 
-    PUSHBUTTON      "Current",IDC_SET_CURRENT,10,186,40,14
-    PUSHBUTTON      "Registry",IDC_SET_REGISTRY,52,186,40,14
-    PUSHBUTTON      "Keyboard",IDC_SET_NORMAL,94,186,40,14
-    PUSHBUTTON      "Default",IDC_SET_DEFAULTS,136,186,40,14
-    PUSHBUTTON      "Original",IDC_SET_ORIGINAL,178,186,40,14
+    PUSHBUTTON      "Curr&ent",IDC_SET_CURRENT,10,186,40,14
+    PUSHBUTTON      "Re&gistry",IDC_SET_REGISTRY,52,186,40,14
+    PUSHBUTTON      "&Keyboard",IDC_SET_NORMAL,94,186,40,14
+    PUSHBUTTON      "Defau&lt",IDC_SET_DEFAULTS,136,186,40,14
+    PUSHBUTTON      "Origi&nal",IDC_SET_ORIGINAL,178,186,40,14
 
     EDITTEXT        IDC_TEST_EDIT,12,218,204,13,ES_AUTOHSCROLL
 
@@ -99,7 +99,7 @@ BEGIN
 
     DEFPUSHBUTTON   "OK",IDOK,66,256,48,14
     PUSHBUTTON      "Cancel",IDCANCEL,120,256,48,14
-    PUSHBUTTON      "Apply",IDC_APPLY,174,256,48,14
+    PUSHBUTTON      "A&pply",IDC_APPLY,174,256,48,14
 
     GROUPBOX        "Settings",IDC_STATIC,6,6,126,164
     GROUPBOX        "Flags",IDC_STATIC,138,6,84,112

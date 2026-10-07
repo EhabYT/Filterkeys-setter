@@ -346,6 +346,47 @@ format no tool validates. In the IDE it is three clicks: remove the file from
 *Application Folder*, *Add → Project Output → Primary output*, then re-point
 the shortcut at it.
 
+## Keyboard accelerators
+
+Until now not a single control in `IDD_FILTERKEYSSETTER_DIALOG` carried an `&`.
+Tab and the arrow keys worked, but nothing could be reached directly, and a
+screen-reader user had no way to jump to a field. Every interactive control
+now has an Alt accelerator:
+
+| Alt | Control | Alt | Control |
+| --- | --- | --- | --- |
+| Q | Ignore **q**uick keystrokes (radio) | V | Sa**v**e to registry |
+| F | repeated **f**aster than (radio) | B | **B**roadcast change |
+| I | **I**gnore under | T | Dark **t**heme |
+| D | Repeat **d**elay | E | Curr**e**nt |
+| M | Bounce ti**m**e | G | Re**g**istry |
+| R | Repeat **r**ate | K | **K**eyboard |
+| O | **O**n | L | Defau**l**t |
+| A | **A**vailable | N | Origi**n**al |
+| U | **U**se shortcut | P | A**p**ply |
+| C | **C**onfirm activation | | |
+| S | Activation **s**ound | | |
+| H | S**h**ow status | | |
+| Y | Ke**y** click | | |
+
+Notes on the choices:
+
+- Twenty-two controls compete for twenty-six letters, so a few accelerators
+  land mid-word (`Curr&ent`, `Defau&lt`, `Origi&nal`). That is normal in dense
+  dialogs; thirteen of them still sit on a word initial.
+- Group boxes deliberately get none. Their accelerator would move the focus to
+  the next control in z-order, which is a surprise rather than a shortcut.
+- OK and Cancel get none either, by convention: Enter and Esc already reach
+  them, and `&O`/`&C` would collide with *On* and *Confirm activation*.
+- The labels are `RTEXT` statics placed immediately before their edit box in
+  z-order, which is exactly what the dialog manager needs — a static
+  accelerator hands the focus to the *next* control, so Alt+D lands in the
+  delay field.
+- `tools/check-dialog-layout.py` now fails when two controls in the same
+  dialog claim the same letter, and ignores `&` when it estimates caption
+  widths. `tools/render-dialog.py` strips the `&` and underlines the marked
+  character, so the preview images match what Windows draws with Alt held.
+
 ## Known trade-offs
 
 **Check boxes, radio buttons and group boxes look flat in the dark theme.**

@@ -8,6 +8,7 @@ hand and that otherwise only show up once the program is running:
   * controls overlapping each other
   * controls poking out of the group box they visually belong to
   * captions too long for their control at the dialog font
+  * the same Alt accelerator claimed by two controls
 
 The text width model is an approximation of Segoe UI, so treat its warnings as
 "look at this in the dialog editor", not as hard failures.
@@ -31,6 +32,7 @@ LINE_HEIGHT_DLU = 9       # one line of Segoe UI 9 pt
 
 
 def text_width(text):
+    text = text.replace("&&", "\x00").replace("&", "").replace("\x00", "&")
     total = 0.0
     for ch in text:
         if ch in NARROW:
@@ -74,6 +76,23 @@ def parse_dialog(rc, name):
             "line": line,
         })
     return width, height, controls
+
+
+def mnemonics(controls):
+    """control -> accelerator letter, from the & in its caption."""
+    found = []
+    for ctl in controls:
+        text = ctl["text"]
+        i = 0
+        while i < len(text) - 1:
+            if text[i] == "&":
+                if text[i + 1] == "&":
+                    i += 2
+                    continue
+                found.append((ctl, text[i + 1].lower()))
+                break
+            i += 1
+    return found
 
 
 def overlap(a, b):
@@ -131,6 +150,14 @@ def check(rc, name):
         if capacity <= 0 or needed > capacity:
             problems.append('%s: caption "%s" needs ~%d DLU but has %d'
                             % (c["id"], c["text"], needed, capacity))
+
+    seen = {}
+    for ctl, letter in mnemonics(controls):
+        if letter in seen:
+            problems.append('accelerator Alt+%s is used twice: %s and %s'
+                            % (letter.upper(), seen[letter], ctl["id"]))
+        else:
+            seen[letter] = ctl["id"]
 
     return width, height, len(controls), problems
 
