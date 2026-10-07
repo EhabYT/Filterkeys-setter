@@ -19,6 +19,7 @@ Exit code 1 if any rule failed to fire, or if the unmodified tree is not clean.
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -131,11 +132,39 @@ CASES = [
      '"ProductVersion" = "8:1.0.10"',
      "the installer builds"),
 
+    ("icon file missing", RESOURCES, RC,
+     'IDR_MAINFRAME           ICON                    "res\\\\FilterKeysSetter.ico"',
+     'IDR_MAINFRAME           ICON                    "res\\\\Missing.ico"',
+     "not found"),
+
     ("README history ahead of the binary", RESOURCES, "README.md",
      "* 1.11 ",
      "* 1.12 ",
      "README version history entry"),
 ]
+
+
+def drop_frames(data, sizes):
+    """Rebuilds an .ico without the given frame sizes, for the mutation test."""
+    count = struct.unpack("<H", data[4:6])[0]
+    entries, payloads = [], []
+    for index in range(count):
+        entry = bytearray(data[6 + index * 16:22 + index * 16])
+        size, length, offset = (entry[0] or 256,
+                                struct.unpack("<I", entry[8:12])[0],
+                                struct.unpack("<I", entry[12:16])[0])
+        if size in sizes:
+            continue
+        entries.append(entry)
+        payloads.append(data[offset:offset + length])
+
+    out = struct.pack("<HHH", 0, 1, len(entries))
+    position = 6 + 16 * len(entries)
+    for entry, payload in zip(entries, payloads):
+        entry[12:16] = struct.pack("<I", position)
+        position += len(payload)
+        out += bytes(entry)
+    return out + b"".join(payloads)
 
 
 def read(path):
@@ -173,6 +202,7 @@ def copy_tree(destination):
 def main():
     verbose = "-v" in sys.argv
     failures = []
+    ran = 0
 
     with tempfile.TemporaryDirectory() as tmp:
         sandbox = os.path.join(tmp, "tree")
@@ -188,6 +218,7 @@ def main():
                 print("baseline %-24s clean" % checker)
 
         for name, checker, target, old, new, expected in CASES:
+            ran += 1
             path = os.path.join(sandbox, target)
             original = read(path)
             if original.count(old) < 1:
@@ -206,6 +237,28 @@ def main():
             elif verbose:
                 print("ok  %-48s %s" % (name, checker))
 
+        # The icon is binary, so it gets its own pair of cases rather than a
+        # text replacement.
+        icon = os.path.join(sandbox, "res", "FilterKeysSetter.ico")
+        original = open(icon, "rb").read()
+        for name, broken, expected in (
+                ("truncated icon file", original[:400], "damaged"),
+                ("icon without a 256 px frame", drop_frames(original, (256,)),
+                 "no 256 px frame")):
+            ran += 1
+            with open(icon, "wb") as handle:
+                handle.write(broken)
+            code, output = run(RESOURCES, sandbox)
+            with open(icon, "wb") as handle:
+                handle.write(original)
+            if code == 0:
+                failures.append("%s: %s did not notice" % (name, RESOURCES))
+            elif expected not in output:
+                failures.append('%s: complained, but not about "%s":\n%s'
+                                % (name, expected, output.strip()))
+            elif verbose:
+                print("ok  %-48s %s" % (name, RESOURCES))
+
         # Nothing may be left behind in the scratch copy.
         for checker in (LAYOUT, MAP, RESOURCES):
             code, output = run(checker, sandbox)
@@ -215,7 +268,7 @@ def main():
 
     for failure in failures:
         print("  ! " + failure)
-    print("%d case(s), %d failure(s)" % (len(CASES), len(failures)))
+    print("%d case(s), %d failure(s)" % (ran, len(failures)))
     return 1 if failures else 0
 
 

@@ -8,6 +8,7 @@ Two kinds of damage are easy to do by hand and invisible until much later:
     counter that has fallen behind, a symbol used in the .rc but never
     defined, or one defined and never used
   * the version number living in five places and only being bumped in four
+  * an icon that is missing frames, so Windows rescales a neighbouring size
 
 Usage:  python tools/check-resources.py [repo root]
 Exit code 1 if anything looks wrong; notes alone do not fail the run.
@@ -15,6 +16,7 @@ Exit code 1 if anything looks wrong; notes alone do not fail the run.
 
 import os
 import re
+import struct
 import sys
 
 # Numbers from Windows and MFC that resource.h legitimately does not define.
@@ -115,6 +117,69 @@ def check_usage(symbols, files):
     return problems, notes
 
 
+REQUIRED_ICON_SIZES = (16, 32, 48, 256)
+
+
+def read_ico(data):
+    """[(size, bits per pixel, 'png'|'bmp')] from an .ico container."""
+    if len(data) < 6:
+        raise ValueError("file is too short to be an icon")
+    reserved, kind, count = struct.unpack("<HHH", data[:6])
+    if reserved != 0 or kind != 1:
+        raise ValueError("not an icon container (type %d)" % kind)
+    frames = []
+    for index in range(count):
+        entry = data[6 + index * 16:22 + index * 16]
+        width, height, _, _, _, bpp, size, offset = struct.unpack("<BBBBHHII", entry)
+        if offset + size > len(data):
+            raise ValueError("frame %d points past the end of the file" % index)
+        encoding = ("png" if data[offset:offset + 8] == b"\x89PNG\r\n\x1a\n"
+                    else "bmp")
+        frames.append((width or 256, bpp, encoding))
+    return frames
+
+
+def check_icon(root):
+    """The .rc names an icon file; it has to exist and carry the usual sizes."""
+    problems, notes = [], []
+    rc = read(os.path.join(root, "FilterKeysSetter.rc"))
+    declared = re.findall(r'^(\w+)\s+ICON\s+"([^"]+)"', rc, re.M)
+    if not declared:
+        notes.append("the .rc declares no ICON resource")
+        return problems, notes
+
+    for symbol, relative in declared:
+        path = os.path.join(root, relative.replace("\\\\", os.sep).replace("\\", os.sep))
+        if not os.path.exists(path):
+            problems.append("%s: icon file %s not found" % (symbol, relative))
+            continue
+        with open(path, "rb") as handle:
+            data = handle.read()
+        try:
+            frames = read_ico(data)
+        except ValueError as error:
+            problems.append("%s: %s is damaged -- %s" % (symbol, relative, error))
+            continue
+
+        sizes = sorted(set(size for size, _, _ in frames))
+        missing = [s for s in REQUIRED_ICON_SIZES if s not in sizes]
+        if missing:
+            problems.append("%s: %s has no %s px frame, Windows would rescale "
+                            "a neighbour" % (symbol, relative,
+                                             "/".join(str(m) for m in missing)))
+        shallow = sorted(set(size for size, bpp, _ in frames if bpp < 32))
+        if shallow:
+            notes.append("%s: %s px frames are below 32 bpp, so they have no "
+                         "alpha channel" % (symbol,
+                                            "/".join(str(s) for s in shallow)))
+        big_bmp = sorted(size for size, _, enc in frames
+                         if enc == "bmp" and size >= 256)
+        if big_bmp:
+            notes.append("%s: the %s px frame is an uncompressed BMP"
+                         % (symbol, "/".join(str(s) for s in big_bmp)))
+    return problems, notes
+
+
 def check_versions(root):
     problems, notes = [], []
     rc = read(os.path.join(root, "FilterKeysSetter.rc"))
@@ -172,6 +237,7 @@ def main():
     problems, notes = [], []
     for part in (check_symbols(symbols, counters),
                  check_usage(symbols, sources(root)),
+                 check_icon(root),
                  check_versions(root)):
         problems += part[0]
         notes += part[1]

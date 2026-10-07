@@ -417,6 +417,32 @@ Symbols that are defined but never used are reported as a note, not a
 failure. Every rule was verified by mutating a throw-away copy of the tree
 and confirming the exit code turns to 1.
 
+## The icon container
+
+`res/FilterKeysSetter.ico` is built by `tools/make-icon.py` from the 256 px
+master in `res/logo.png`:
+
+```
+pip install Pillow
+python tools\make-icon.py
+```
+
+It writes ten frames -- 16, 20, 24, 32, 40, 48, 64, 96, 128 and 256 px.
+The unusual ones earn their place: 20 and 40 px are what the shell asks for
+at 125 % and 150 % DPI, and without them Windows rescales the 16 and 32 px
+frames into something visibly soft. Everything up to 96 px is stored as an
+uncompressed 32-bit BMP with an AND mask, the form every Windows version
+understands; 128 and 256 px are PNG-compressed, which is what PNG frames in
+icons were introduced for -- as BMPs those two would add about 170 KB.
+Pillow's own ICO writer PNG-compresses every frame, so the container is
+assembled by hand in that script.
+
+`tools/check-resources.py` reads the container back without Pillow (an .ico
+directory is a six-byte header plus sixteen bytes per frame) and fails when
+the file named in the `.rc` is missing, when it does not parse, or when the
+16, 32, 48 or 256 px frame is absent. Frames below 32 bpp and an
+uncompressed 256 px frame are reported as notes.
+
 ## Self test for the checkers
 
 Three checkers now gate this repository, and each of their rules was verified
@@ -432,18 +458,18 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all three checkers are
-clean on the untouched copy, then applies **19 mutations** one at a time --
+clean on the untouched copy, then applies **22 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
 tip on a static without `SS_NOTIFY`, two resource symbols sharing a number,
-an installer version left behind, and so on. Each one has to make the right
+an installer version left behind, a truncated icon file, and so on. Each one has to make the right
 checker exit non-zero *and* print the expected sentence; afterwards the file
 is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `19 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `22 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
