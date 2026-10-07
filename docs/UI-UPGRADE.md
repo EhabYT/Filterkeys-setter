@@ -399,6 +399,24 @@ on z-order rather than on anything visible in the dialog editor:
 All three were verified by mutating the `.rc` and confirming the checker
 fails, then restoring it.
 
+## Resource and version check
+
+`tools/check-resources.py` covers the bookkeeping that no compiler complains
+about. Run it with `python tools/check-resources.py`; it prints
+`33 symbol(s), 0 problem(s)` and exits 0 when the repository is healthy.
+
+| It fails when | Why that matters |
+| --- | --- |
+| Two symbols of the same family share a value | `IDC_DARKTHEME` and `IDC_STATUS` both on 1027 means `DDX` writes into the wrong control and `GetDlgItem` returns the wrong window. Nothing warns you. |
+| An `_APS_NEXT_*` counter has fallen behind | The dialog editor hands out the next ID from that counter, so the next control added in the IDE silently duplicates an existing one. |
+| An `IDC_`/`IDD_` symbol is used but not defined | The `.rc` still compiles if some other header happens to define it. |
+| `FILEVERSION`, `PRODUCTVERSION` and the two `VALUE` strings disagree | Windows shows one number in the file properties and another in the installer. |
+| The about box, the installer `ProductVersion` or the newest README entry do not match `VERSIONINFO` | The version lives in five places; bumping four of them is the normal outcome. |
+
+Symbols that are defined but never used are reported as a note, not a
+failure. Every rule was verified by mutating a throw-away copy of the tree
+and confirming the exit code turns to 1.
+
 ## Known trade-offs
 
 **Check boxes, radio buttons and group boxes look flat in the dark theme.**
