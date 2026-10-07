@@ -417,6 +417,35 @@ Symbols that are defined but never used are reported as a note, not a
 failure. Every rule was verified by mutating a throw-away copy of the tree
 and confirming the exit code turns to 1.
 
+## Self test for the checkers
+
+Three checkers now gate this repository, and each of their rules was verified
+once, by hand, by breaking the source on purpose. That verification lived in
+the commit messages, which means a later refactor could quietly turn a rule
+into a no-op: the checkers would still print `ok` on a healthy tree, and
+nobody would notice that they had stopped checking.
+
+`tools/selftest.py` replays those mutations:
+
+```
+python tools\selftest.py -v
+```
+
+It copies the tree into a scratch directory, confirms all three checkers are
+clean on the untouched copy, then applies **19 mutations** one at a time --
+a button pushed off the dialog, a control moved out of its group box, a
+duplicate accelerator, a label accelerator pointing at the wrong row, a check
+box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
+tip on a static without `SS_NOTIFY`, two resource symbols sharing a number,
+an installer version left behind, and so on. Each one has to make the right
+checker exit non-zero *and* print the expected sentence; afterwards the file
+is restored and the checkers must be clean again. The working tree is never
+touched.
+
+The test was itself verified by neutering the duplicate-accelerator rule in
+`check-dialog-layout.py`: `19 case(s), 1 failure(s)` --
+`the same accelerator used twice: check-dialog-layout.py did not notice`.
+
 ## Known trade-offs
 
 **Check boxes, radio buttons and group boxes look flat in the dark theme.**
