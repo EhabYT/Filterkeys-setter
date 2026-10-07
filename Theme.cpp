@@ -53,6 +53,7 @@ CTheme::CTheme()
 	: m_mode(ThemeMode::Dark)
 	, m_brushBack(NULL)
 	, m_brushSurface(NULL)
+	, m_bOwnsBrushes(false)
 {
 	m_palette = kDarkPalette;
 	Rebuild();
@@ -60,8 +61,11 @@ CTheme::CTheme()
 
 CTheme::~CTheme()
 {
-	if (m_brushBack) ::DeleteObject(m_brushBack);
-	if (m_brushSurface) ::DeleteObject(m_brushSurface);
+	// Stock objects must never be deleted, so only our own brushes are.
+	if (m_bOwnsBrushes) {
+		if (m_brushBack) ::DeleteObject(m_brushBack);
+		if (m_brushSurface) ::DeleteObject(m_brushSurface);
+	}
 }
 
 ThemeMode CTheme::LoadPreference()
@@ -119,14 +123,31 @@ void CTheme::SetMode(ThemeMode mode)
 
 void CTheme::Rebuild()
 {
-	if (m_brushBack) {
-		::DeleteObject(m_brushBack);
-	}
-	if (m_brushSurface) {
-		::DeleteObject(m_brushSurface);
+	if (m_bOwnsBrushes) {
+		if (m_brushBack) {
+			::DeleteObject(m_brushBack);
+		}
+		if (m_brushSurface) {
+			::DeleteObject(m_brushSurface);
+		}
 	}
 	m_brushBack = ::CreateSolidBrush(m_palette.clrBackTop);
 	m_brushSurface = ::CreateSolidBrush(m_palette.clrSurface);
+
+	// Returning NULL from WM_CTLCOLOR* is not allowed -- the control would
+	// paint with whatever brush happens to be selected. Under GDI handle
+	// exhaustion a stock brush is a poor but legal answer.
+	m_bOwnsBrushes = (m_brushBack != NULL && m_brushSurface != NULL);
+	if (!m_bOwnsBrushes) {
+		if (m_brushBack != NULL) {
+			::DeleteObject(m_brushBack);
+		}
+		if (m_brushSurface != NULL) {
+			::DeleteObject(m_brushSurface);
+		}
+		m_brushBack = static_cast<HBRUSH>(::GetStockObject(DKGRAY_BRUSH));
+		m_brushSurface = static_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH));
+	}
 }
 
 void CTheme::PaintBackground(CDC& dc, const CRect& rect) const
@@ -176,6 +197,10 @@ void CTheme::PaintBackgroundSlice(CDC& dc, const CRect& full, const CRect& targe
 		const int step    = (i < half) ? i : (i - half);
 		const int steps   = (segment == 0) ? half : (bands - half);
 
+		// steps is 64 for both halves as long as bands stays even and above
+		// two; the guard keeps a future edit of 'bands' from dividing by zero.
+		const int span = (steps > 1) ? (steps - 1) : 1;
+
 		const COLORREF from = stops[segment];
 		const COLORREF to   = stops[segment + 1];
 
@@ -183,9 +208,9 @@ void CTheme::PaintBackgroundSlice(CDC& dc, const CRect& full, const CRect& targe
 		const int g1 = GetGValue(from), g2 = GetGValue(to);
 		const int b1 = GetBValue(from), b2 = GetBValue(to);
 
-		const COLORREF clr = RGB(r1 + (r2 - r1) * step / (steps - 1),
-		                         g1 + (g2 - g1) * step / (steps - 1),
-		                         b1 + (b2 - b1) * step / (steps - 1));
+		const COLORREF clr = RGB(r1 + (r2 - r1) * step / span,
+		                         g1 + (g2 - g1) * step / span,
+		                         b1 + (b2 - b1) * step / span);
 		dc.FillSolidRect(clipped, clr);
 	}
 }

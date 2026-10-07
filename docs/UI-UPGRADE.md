@@ -553,6 +553,21 @@ registry -- which is what the literal 122 there had always meant.
 The success path is byte for byte what it was: same calls, same arguments,
 same order.
 
+**`CTheme` owned two GDI brushes with the default copy constructor still in
+place.** Nothing copies a `CTheme` today -- there is one in each dialog --
+but a copy would have handed the same two handles to a second destructor,
+and a double `DeleteObject` is the kind of fault that shows up as a random
+painting failure somewhere else entirely. The copy constructor and the
+assignment operator are now `= delete`.
+
+Two smaller ones in the same file: if `CreateSolidBrush` ever fails, the
+theme used to hand `NULL` back to `WM_CTLCOLOR*`, which is not a legal
+answer -- the control then paints with whatever brush happens to be
+selected. It now falls back to stock brushes and remembers not to delete
+them. And the gradient divided by `steps - 1`, which is only safe because
+`bands` happens to be 128; the divisor is now guarded so that changing that
+constant cannot divide by zero.
+
 ## More latent bugs fixed along the way
 
 Not part of the UI work, but found while reading the surrounding code:

@@ -32,6 +32,12 @@ public:
 	CTheme();
 	~CTheme();
 
+	// The class owns two GDI brushes, so a copy would hand the same two
+	// handles to a second destructor. Nothing copies a CTheme today; this
+	// makes sure a later refactor cannot start doing it by accident.
+	CTheme(const CTheme&) = delete;
+	CTheme& operator=(const CTheme&) = delete;
+
 	// Reads the persisted choice from the registry (defaults to Dark).
 	static ThemeMode LoadPreference();
 	static void SavePreference(ThemeMode mode);
@@ -74,4 +80,7 @@ private:
 	ThemePalette m_palette;
 	HBRUSH m_brushBack;
 	HBRUSH m_brushSurface;
+	// False when the two handles above are stock objects, which must not
+	// be deleted.
+	bool m_bOwnsBrushes;
 };
