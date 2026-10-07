@@ -25,7 +25,7 @@ Deliberately **not** done: per-monitor DPI awareness, noted under
 | Repeat delay / rate | Numeric edit boxes only | Edit boxes plus synchronised sliders with a cyan thumb |
 | Flags readout | `(122)` | `Flags: 122 (0x7A)` |
 | Status | None | Live line showing what Windows is actually using |
-| Help | None | Tooltips on all 25 controls, flag checkboxes name their `FKF_*` constant |
+| Help | None | Tooltips on all 28 controls including the three read-outs, flag checkboxes name their `FKF_*` constant |
 | Accessible names | Missing — all labels sat at the end of the resource | Each label precedes its control; sliders carry their name in the window text |
 | About box | Native light only | Follows the selected theme |
 | High contrast | Ignored | Custom palette steps aside automatically |
