@@ -517,6 +517,26 @@ reason the geometry was left proportional instead of being hand-tuned.
 
 ## Latent bugs fixed along the way
 
+**Two failure paths in the FilterKeys reads did the wrong thing.** Neither
+is reachable on a healthy desktop -- `SPI_GETFILTERKEYS` fails under a
+restricted desktop or a user session that is going away -- but both would
+have destroyed settings rather than reporting a problem:
+
+- *Current* showed `Failed to fetch current settings` and then **loaded the
+  struct anyway**. At that point it contains nothing but its own `cbSize`,
+  so the error box was followed by every field in the dialog quietly
+  becoming zero. It now returns after the message.
+- The start-up read was not checked at all, so after a failure *Original*
+  offered to "restore" FilterKeys off with all four timings at 0 -- the one
+  button whose whole purpose is to put things back. The result is now
+  remembered in `m_bHaveOriginal`; if the read failed the button is disabled
+  in `OnInitDialog` and the handler refuses a stray click as well.
+
+The success path is byte for byte what it was: same calls, same arguments,
+same order.
+
+## More latent bugs fixed along the way
+
 Not part of the UI work, but found while reading the surrounding code:
 
 * The value members (`m_nWait`, `m_nDelay`, ...) were never initialised, so the

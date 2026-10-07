@@ -1,4 +1,4 @@
-// FilterKeysSetterDlg.cpp : implementation file
+﻿// FilterKeysSetterDlg.cpp : implementation file
 //
 
 #include "pch.h"
@@ -210,6 +210,7 @@ CFilterKeysSetterDlg::CFilterKeysSetterDlg(CWnd* pParent /*=NULL*/)
 	, m_bUpdateIniFile(FALSE)
 	, m_bSendChange(FALSE)
 	, m_bSyncingSlider(false)
+	, m_bHaveOriginal(false)
 {
 	ZeroMemory(&m_fkOriginal, sizeof(m_fkOriginal));
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
@@ -337,7 +338,19 @@ BOOL CFilterKeysSetterDlg::OnInitDialog()
 	// Stash current FilterKeys settings...
 	ZeroMemory(&m_fkOriginal, sizeof(m_fkOriginal));
 	m_fkOriginal.cbSize = sizeof(FILTERKEYS);
-	SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &m_fkOriginal, 0);
+	m_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,
+		sizeof(FILTERKEYS), &m_fkOriginal, 0);
+	if (!m_bHaveOriginal) {
+		// Without that read, "Original" would offer to restore a struct of
+		// zeroes -- FilterKeys off, every timing 0 -- while claiming to put
+		// things back the way they were.
+		ZeroMemory(&m_fkOriginal, sizeof(m_fkOriginal));
+		m_fkOriginal.cbSize = sizeof(FILTERKEYS);
+		CWnd* pOriginal = GetDlgItem(IDC_SET_ORIGINAL);
+		if (pOriginal != NULL) {
+			pOriginal->EnableWindow(FALSE);
+		}
+	}
 
 	// Sliders have to exist before the first SetValues() call feeds them.
 	InitSliders();
@@ -909,7 +922,10 @@ void CFilterKeysSetterDlg::OnBnClickedSetCurrent()
 	FILTERKEYS filter_keys = { sizeof(FILTERKEYS) };
 	BOOL ok = SystemParametersInfo(SPI_GETFILTERKEYS, sizeof(FILTERKEYS), &filter_keys, 0);
 	if (!ok) {
+		// filter_keys holds nothing but its own cbSize at this point, so
+		// loading it would quietly replace the dialog with zeroes.
 		ErrorBox(_T("Failed to fetch current settings"));
+		return;
 	}
 	SetValues(filter_keys);
 }
@@ -1055,5 +1071,12 @@ bool CFilterKeysSetterDlg::SaveSettings()
 
 void CFilterKeysSetterDlg::OnBnClickedSetOriginal()
 {
+	// The button is disabled in that case, but a stray BN_CLICKED (an
+	// accelerator arriving before OnInitDialog finishes, say) must not get
+	// through either.
+	if (!m_bHaveOriginal) {
+		ErrorBox(_T("The settings in use at start-up could not be read."));
+		return;
+	}
 	SetValues(m_fkOriginal);
 }

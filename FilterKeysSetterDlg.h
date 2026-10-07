@@ -78,6 +78,9 @@ protected:
 	DECLARE_MESSAGE_MAP()
 
 	FILTERKEYS m_fkOriginal;
+	// False when SPI_GETFILTERKEYS failed at start-up, in which case
+	// m_fkOriginal is zeroes rather than the state to restore.
+	bool m_bHaveOriginal;
 
 	int m_nMode;
 
