@@ -212,6 +212,13 @@ them from inside the macro expansion, and the `.cpp` grew eight new
 faults -- a typo in a handler name, a typo in a control ID, and an
 `ON_WM_TIMER()` with no handler behind it -- all three were reported.
 
+It also follows the control IDs out of the code and into the resource
+script: every ID used by `DDX_*`, by `GetDlgItem` or by the tool tip table
+has to belong to a dialog in `FilterKeysSetter.rc`, not merely exist in
+`resource.h`. And it knows one MFC trap: a tool tip on a static only ever
+appears if that static carries `SS_NOTIFY`, because without it the control
+returns `HTTRANSPARENT` and never sees the mouse.
+
 Current state: clean, with one note. `ON_COMMAND(ID_HELP, CWinApp::OnHelp)`
 in `FilterKeysSetter.cpp` points at a base class member, which the tool
 reports and skips rather than guessing at MFC's own class hierarchy.

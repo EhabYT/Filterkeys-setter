@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Static check of the MFC message maps in this project.
+"""Static check of the MFC message maps and dialog wiring in this project.
 
 A message map is three things that have to agree: the entry in
 BEGIN_MESSAGE_MAP, the `afx_msg` declaration in the class, and the definition
@@ -14,7 +14,11 @@ What is checked:
   * every handler named in a message map is defined in the .cpp,
   * every control ID used in a map or in DDX exists in resource.h,
   * `afx_msg` members that no map ever references (dead handlers),
-  * duplicate entries for the same notification and ID.
+  * duplicate entries for the same notification and ID,
+  * every control ID used by `DDX_*`, the tool tip table or `GetDlgItem`
+    exists in a dialog in the .rc, not merely in resource.h,
+  * tool tips attached to a static carry SS_NOTIFY, without which the static
+    never sees the mouse and the tip never appears.
 
 Usage:  python tools/check-message-map.py [file.cpp ...]
 Exit code 1 if anything looks wrong.
@@ -139,6 +143,76 @@ def ddx_ids(text):
     return set(re.findall(r"DDX_\w+\s*\(\s*pDX\s*,\s*(\w+)", text))
 
 
+def dialog_controls(rc_path):
+    """control ID -> (kind, full resource line), across every dialog."""
+    text = strip_comments(read(rc_path))
+    controls = {}
+    for dialog in re.finditer(r"(\w+)\s+DIALOGEX.*?\nBEGIN\n(.*?)\nEND", text, flags=re.S):
+        body = re.sub(r",\s*\n\s+", ", ", dialog.group(2))
+        for line in body.splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            ident = re.search(r"\b(ID[CORKM]\w*|IDOK|IDCANCEL)\b", line)
+            if not ident or ident.group(1) == "IDC_STATIC":
+                continue
+            controls[ident.group(1)] = (line.split()[0], line)
+    return controls
+
+
+def tooltip_ids(text):
+    block = re.search(r"kToolTips\[\]\s*=\s*\{(.*?)\n\t\};", text, flags=re.S)
+    if not block:
+        return set()
+    return set(re.findall(r"\{\s*(ID\w+)", block.group(1)))
+
+
+def check_wiring(sources, rc_path):
+    """Control IDs referenced from code must exist in the .rc dialogs."""
+    problems, notes = [], []
+    controls = dialog_controls(rc_path)
+    if not controls:
+        return ["%s: no dialog controls found" % os.path.relpath(rc_path, ROOT)], []
+
+    static_kinds = ("LTEXT", "RTEXT", "CTEXT")
+
+    for path in sources:
+        text = strip_comments(read(path))
+        rel = os.path.relpath(path, ROOT)
+
+        referenced = set()
+        referenced |= ddx_ids(text)
+        referenced |= set(re.findall(r"(?:Get|Set)DlgItem\w*\s*\(\s*(ID[CORKM]\w*)", text))
+
+        tips = tooltip_ids(text)
+        referenced |= tips
+
+        for control in sorted(referenced):
+            if control in ("IDC_STATIC", "IDOK", "IDCANCEL"):
+                continue
+            if control not in controls:
+                problems.append("%s: %s is used in code but is in no dialog in %s"
+                                % (rel, control, os.path.relpath(rc_path, ROOT)))
+
+        for control in sorted(tips):
+            kind, line = controls.get(control, (None, ""))
+            if kind in static_kinds and "SS_NOTIFY" not in line:
+                problems.append("%s: tool tip on %s, but the static has no "
+                                "SS_NOTIFY and will never see the mouse" % (rel, control))
+
+        if tips:
+            # Buttons that need no explanation, and the icon in the About
+            # box, are not gaps.
+            uncovered = sorted(c for c, (kind, _line) in controls.items()
+                               if c not in tips
+                               and c not in ("IDOK", "IDCANCEL")
+                               and kind != "ICON")
+            for control in uncovered:
+                notes.append("%s: %s has no tool tip" % (rel, control))
+
+    return problems, notes
+
+
 def check(sources, header_paths, resource_path):
     problems = []
     notes = []
@@ -232,6 +306,12 @@ def main():
         return 1
 
     problems, notes = check(sources, headers, resource)
+
+    rc_path = os.path.join(ROOT, "FilterKeysSetter.rc")
+    if os.path.isfile(rc_path):
+        more_problems, more_notes = check_wiring(sources, rc_path)
+        problems += more_problems
+        notes += more_notes
 
     for note in notes:
         print("note: %s" % note)

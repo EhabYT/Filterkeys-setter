@@ -398,6 +398,14 @@ namespace
 		{ IDC_SET_DEFAULTS, _T("Load the Windows default FilterKeys values.") },
 		{ IDC_SET_ORIGINAL, _T("Restore the settings that were active when this program started.") },
 		{ IDC_TEST_EDIT, _T("Type here to try the timings out. Click Apply first.") },
+		// The three read-outs. They are statics, so they carry SS_NOTIFY in the
+		// resource; without it the mouse never reaches them and no tip appears.
+		{ IDC_CHARS_PER_SEC,
+		  _T("The repeat rate expressed as characters per second, the way it is usually quoted.") },
+		{ IDC_FLAGVAL,
+		  _T("The seven check boxes above as one number: the dwFlags value Windows stores for FilterKeys.") },
+		{ IDC_STATUS,
+		  _T("What Windows reports right now, which is not necessarily what this dialog shows until you press Apply.") },
 		{ IDC_APPLY, _T("Apply the settings without closing the window.") },
 		{ IDC_DARKTHEME, _T("Switch between the dark and the native light appearance.") },
 	};
