@@ -280,6 +280,11 @@ This is why `CTheme::ApplyToControl` leaves push buttons attached to the
 visual style: an unthemed button falls back to classic drawing and never
 sends `NM_CUSTOMDRAW`.
 
+The painter itself is a file-local function, `PaintThemedPushButton`, not a
+member of either dialog. Both the main window and the About box call it from
+their own two-line `NM_CUSTOMDRAW` handler, so the *OK* button in the About
+box cannot drift away from the eight buttons in the main window.
+
 ## Known trade-offs
 
 **Check boxes, radio buttons and group boxes look flat in the dark theme.**
