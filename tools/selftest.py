@@ -40,6 +40,7 @@ MAP = "check-message-map.py"
 RESOURCES = "check-resources.py"
 ERRORS = "check-error-handling.py"
 PROJECT = "check-project.py"
+DOCS = "check-docs.py"
 
 # (name, checker, file, text to replace, replacement, expected in the output)
 CASES = [
@@ -155,6 +156,21 @@ CASES = [
      "msbuild FilterKeysSetter.vcxproj", "msbuild FilterKeysSetter.sln",
      "but the solution only knows"),
 
+    # -- check-docs.py ----------------------------------------------------
+    ("documentation link to a file that is gone", DOCS, "README.md",
+     "[CHANGELOG.md](CHANGELOG.md)", "[CHANGELOG.md](CHANGES.md)",
+     "which does not exist"),
+
+    ("documentation link to a heading that was reworded", DOCS, "README.md",
+     "docs/UI-UPGRADE.md#keyboard-accelerators",
+     "docs/UI-UPGRADE.md#keyboard-shortcuts",
+     "has no such heading"),
+
+    ("documentation naming a tool that is not there", DOCS,
+     os.path.join("docs", "UI-UPGRADE.md"),
+     "`tools/render-dialog.py`", "`tools/draw-dialog.py`",
+     "which does not exist"),
+
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
      "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",
@@ -248,7 +264,7 @@ def run(checker, sandbox):
     # Always the copy of the checker inside the sandbox, so that editing a
     # checker is covered by this test as well.
     script = os.path.join(sandbox, "tools", checker)
-    if checker in (RESOURCES, PROJECT):
+    if checker in (RESOURCES, PROJECT, DOCS):
         argv = [sys.executable, script, sandbox]
     elif checker == LAYOUT:
         argv = [sys.executable, script, os.path.join(sandbox, RC)]
@@ -259,11 +275,11 @@ def run(checker, sandbox):
 
 
 def copy_tree(destination):
-    # docs/ is copied too: the workflow files under docs/workflows are
-    # checked like any other build script. Only docs/img, which is a few
-    # hundred kilobytes of screenshots, is left out.
+    # The whole tree apart from the repository metadata and build output:
+    # the workflow files under docs/workflows are checked like any other
+    # build script, and check-docs.py follows links into docs/img.
     shutil.copytree(ROOT, destination,
-                    ignore=shutil.ignore_patterns(".git", "img", "x64",
+                    ignore=shutil.ignore_patterns(".git", "x64",
                                                   "Debug", "Release", "*.log"))
 
 
@@ -277,7 +293,7 @@ def main():
         copy_tree(sandbox)
 
         # A mutation test only means something if the baseline is clean.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("baseline: %s already fails:\n%s"
@@ -328,7 +344,7 @@ def main():
                 print("ok  %-48s %s" % (name, RESOURCES))
 
         # Nothing may be left behind in the scratch copy.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("after restoring, %s fails:\n%s"

@@ -37,6 +37,9 @@ jobs:
       - name: Error handling check
         run: python tools/check-error-handling.py
 
+      - name: Documentation check
+        run: python tools/check-docs.py
+
       - name: Checker self test
         run: python tools/selftest.py
 

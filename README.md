@@ -102,7 +102,7 @@ stays grey and nothing here has been compiled in CI.
 
 ## Checks that do run anywhere
 
-Five Python scripts stand in for the compiler while no toolchain is
+Six Python scripts stand in for the compiler while no toolchain is
 available. They need nothing but a Python 3 install and take under a second
 together:
 
@@ -112,7 +112,8 @@ python tools\check-message-map.py      :: MFC message maps, DDX and tool tip wir
 python tools\check-resources.py        :: resource IDs, the icon container, versions
 python tools\check-error-handling.py   :: Win32 results that are thrown away
 python tools\check-project.py          :: project references, configurations, precompiled header
-python tools\selftest.py               :: breaks the sources on purpose to test the five above
+python tools\check-docs.py             :: links, headings and file names in the documentation
+python tools\selftest.py               :: breaks the sources on purpose to test the six above
 ```
 
 # Usage

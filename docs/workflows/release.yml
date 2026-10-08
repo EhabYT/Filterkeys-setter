@@ -47,6 +47,7 @@ jobs:
           python tools/check-resources.py
           python tools/check-error-handling.py
           python tools/check-project.py
+          python tools/check-docs.py
           python tools/selftest.py
 
   build:

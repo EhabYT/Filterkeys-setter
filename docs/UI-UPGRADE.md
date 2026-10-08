@@ -577,6 +577,31 @@ matter what is being built.
 
 Expected output: two notes and `15 reference(s), 0 problem(s)`.
 
+## Checking the documentation
+
+`tools/check-docs.py` reads every Markdown file in the repository and holds
+it against the tree. Prose rots quietly -- a file is renamed, a heading is
+reworded, a tool is dropped, and the links keep looking right until someone
+follows one.
+
+| Rule | Example of what it catches |
+| --- | --- |
+| Relative links must resolve | a link to CHANGELOG.md left pointing at CHANGES.md after a rename |
+| Link fragments must match a heading in the target file | a link to *#keyboard-shortcuts* after that heading became *Keyboard accelerators* |
+| HTML image sources must exist | the two dialog renderings embedded in the README |
+| Every tool under tools/ must be mentioned somewhere | a checker nobody knows about is a checker nobody runs |
+| A quoted path under tools/, docs/, res/ or the setup folder must exist | render-dialog.py written as draw-dialog.py |
+
+Writing that table was itself a demonstration: the first draft spelled the
+examples out as real links and real quoted paths, and the checker promptly
+reported three faults in the page describing it.
+
+External URLs are left alone: there is no network here, and a page that
+moved is not this repository's fault. The anchor rule follows GitHub's
+slug algorithm -- lowercase, punctuation dropped, spaces to hyphens.
+
+Expected output: `5 document(s), 0 problem(s)`.
+
 ## Self test for the checkers
 
 Three checkers now gate this repository, and each of their rules was verified
@@ -592,7 +617,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **34 mutations** one at a time --
+clean on the untouched copy, then applies **37 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -603,7 +628,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `34 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `37 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -736,4 +761,4 @@ python tools\selftest.py
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`34 case(s), 0 failure(s)`. Anything else is a regression.
+`37 case(s), 0 failure(s)`. Anything else is a regression.
