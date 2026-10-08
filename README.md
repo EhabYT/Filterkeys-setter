@@ -134,6 +134,4 @@ active when the program started.
 > screenshots of a running program. Every control sits exactly where the
 > resource script puts it, but the dialog font is substituted and the native
 > control chrome is only approximated. They will be replaced with real
-> screenshots once a build is available. The screenshot of the original
-> version 1.02 lives in
-> [Soarer's geekhack thread](https://geekhack.org/index.php?topic=41881.0).
+> screenshots once a build is available.
