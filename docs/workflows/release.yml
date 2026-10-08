@@ -41,14 +41,7 @@ jobs:
           python-version: '3.x'
 
       - name: Run every checker
-        run: |
-          python tools/check-dialog-layout.py
-          python tools/check-message-map.py
-          python tools/check-resources.py
-          python tools/check-error-handling.py
-          python tools/check-project.py
-          python tools/check-docs.py
-          python tools/selftest.py
+        run: python tools/check-all.py
 
   build:
     needs: checks

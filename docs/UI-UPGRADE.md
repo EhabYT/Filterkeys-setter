@@ -602,6 +602,27 @@ slug algorithm -- lowercase, punctuation dropped, spaces to hyphens.
 
 Expected output: `5 document(s), 0 problem(s)`.
 
+## Running them all at once
+
+Six checkers plus a self test are easy to run incompletely, so
+`tools/check-all.py` runs them in a fixed order -- cheapest and most
+specific first, the slow self test last -- indents each one's own output
+under its name and ends with a single line:
+
+```
+ok    check-dialog-layout.py     dialog geometry, captions, accelerators
+...
+FAIL  check-docs.py              links, headings and file names in the docs
+...
+2 of 7 failed: check-docs.py, selftest.py
+```
+
+`--quick` leaves out the self test, which is the only one that takes more
+than milliseconds: it copies the tree once per mutation.
+
+That example output is real. Adding the script made `check-docs.py` fail
+immediately, because nothing documented it yet -- which is this paragraph.
+
 ## Self test for the checkers
 
 Three checkers now gate this repository, and each of their rules was verified

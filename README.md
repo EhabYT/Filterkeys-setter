@@ -114,6 +114,7 @@ python tools\check-error-handling.py   :: Win32 results that are thrown away
 python tools\check-project.py          :: project references, configurations, precompiled header
 python tools\check-docs.py             :: links, headings and file names in the documentation
 python tools\selftest.py               :: breaks the sources on purpose to test the six above
+python tools\check-all.py              :: all of the above, with one verdict at the end
 ```
 
 # Usage
