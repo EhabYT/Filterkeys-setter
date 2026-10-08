@@ -131,6 +131,21 @@ CASES = [
      '#include "Theme.h"',
      "needs #include"),
 
+    ("installer downgraded to a parallel install", PROJECT, VDPROJ,
+     '"RemovePreviousVersions" = "11:TRUE"',
+     '"RemovePreviousVersions" = "11:FALSE"',
+     "installs beside the old one"),
+
+    ("installer GUIDs collapsed into one", PROJECT, VDPROJ,
+     '"UpgradeCode" = "8:{95D7E837-A095-4D68-9EC3-B4CA7B9C1EEB}"',
+     '"UpgradeCode" = "8:{7D28C7CF-03E9-4674-B7C1-4AE6F7B04070}"',
+     "could not upgrade"),
+
+    ("installer packaging a path the build never writes", PROJECT, VDPROJ,
+     '"SourcePath" = "8:..\\\\x64\\\\Release\\\\FilterKeysSetter.exe"',
+     '"SourcePath" = "8:..\\\\bin\\\\FilterKeysSetter.exe"',
+     "not an output path of the project"),
+
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
      "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",

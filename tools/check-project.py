@@ -19,6 +19,8 @@ What is checked:
   * each .cpp starts by including pch.h, which /Yu requires
   * the files the .rc pulls in -- icon, rc2, manifest -- exist
   * the manifest named in the project settings is the one in the repository
+  * the installer: an upgrade rather than a parallel install, distinct GUIDs,
+    and a packaged executable path that matches where the project puts it
 
 Usage:  python tools/check-project.py [repo root]
 Exit code 1 if anything looks wrong.
@@ -244,6 +246,73 @@ def check_manifest(root, project):
     return problems
 
 
+VDPROJ = os.path.join("FilterKeysSetter.Setup", "FilterKeysSetter.Setup.vdproj")
+
+GUID = re.compile(r"^\{[0-9A-Fa-f]{8}-(?:[0-9A-Fa-f]{4}-){3}[0-9A-Fa-f]{12}\}$")
+
+
+def project_output(root, project, platform, configuration):
+    """Where MSBuild puts the exe when the project sets no OutDir."""
+    folder = configuration if platform == "Win32" else os.path.join(platform,
+                                                                    configuration)
+    return os.path.join(folder, "FilterKeysSetter.exe")
+
+
+def check_installer(root, project):
+    """The .vdproj is legacy and hand-edited, so its invariants are checked."""
+    problems, notes = [], []
+    path = os.path.join(root, VDPROJ)
+    if not os.path.exists(path):
+        return problems, notes
+    text = read(path)
+
+    def value(name):
+        match = re.search(r'"%s"\s*=\s*"\d+:([^"]*)"' % name, text)
+        return match.group(1) if match else None
+
+    def guid_value(name):
+        """The prerequisite blocks carry a ProductCode too -- take the GUID."""
+        found = re.findall(r'"%s"\s*=\s*"\d+:([^"]*)"' % name, text)
+        for candidate in found:
+            if GUID.match(candidate):
+                return candidate
+        return found[0] if found else None
+
+    product, upgrade = guid_value("ProductCode"), guid_value("UpgradeCode")
+    for name, guid in (("ProductCode", product), ("UpgradeCode", upgrade)):
+        if guid is None:
+            problems.append("the installer has no %s" % name)
+        elif not GUID.match(guid):
+            problems.append("the installer %s %s is not a GUID" % (name, guid))
+    if product and upgrade and product == upgrade:
+        problems.append("ProductCode and UpgradeCode are the same GUID; the "
+                        "next version could not upgrade this one")
+
+    if value("RemovePreviousVersions") != "TRUE":
+        problems.append("RemovePreviousVersions is not TRUE, so a new version "
+                        "installs beside the old one instead of upgrading it")
+
+    # The packaged executable is a plain file reference, not a project output,
+    # so the path has to agree with where the build actually writes.
+    for match in re.finditer(r'"SourcePath"\s*=\s*"\d+:([^"]*FilterKeysSetter\.exe)"',
+                             text):
+        relative = match.group(1).replace("\\\\", "\\")
+        cleaned = relative.lstrip(".\\").replace("\\", os.sep)
+        expected = set()
+        for platform in ("Win32", "x64"):
+            for configuration in ("Debug", "Release"):
+                expected.add(project_output(root, project, platform,
+                                            configuration))
+        if cleaned not in expected:
+            problems.append("the installer packages %s, which is not an output "
+                            "path of the project (%s)"
+                            % (relative, ", ".join(sorted(expected))))
+        else:
+            notes.append("the installer packages %s as a plain file reference, "
+                         "so it always ships that configuration" % relative)
+    return problems, notes
+
+
 def main():
     root = sys.argv[1] if len(sys.argv) > 1 else "."
     path = os.path.join(root, PROJECT)
@@ -262,6 +331,9 @@ def main():
     platform_problems, _ = check_platform_names(root)
     problems += platform_problems
     notes = check_build_participation(root)
+    installer_problems, installer_notes = check_installer(root, project)
+    problems += installer_problems
+    notes += installer_notes
 
     for note in notes:
         print("note: " + note)

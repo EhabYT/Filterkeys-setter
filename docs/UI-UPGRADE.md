@@ -547,7 +547,20 @@ was hiding. It also reports, as a note, that `FilterKeysSetter.Setup` has
 a solution build, which is the default for installer projects and left as
 it is.
 
-Expected output: one note and `15 reference(s), 0 problem(s)`.
+The same checker now also guards the installer, which is a hand-edited
+legacy `.vdproj` that no tool validates:
+
+| Rule | What it prevents |
+| --- | --- |
+| `RemovePreviousVersions` must be `TRUE` | Otherwise 1.12 installs *beside* 1.11 instead of replacing it -- the state this project was actually in before. |
+| `ProductCode` and `UpgradeCode` must both be GUIDs and must differ | A shared GUID makes an upgrade impossible. The prerequisite blocks carry their own `ProductCode` strings such as `.NETFramework,Version=v4.7.2`, so the check takes the GUID-shaped one. |
+| The packaged `FilterKeysSetter.exe` path must be an output the project writes | It is a plain file reference, not a project output, so a renamed folder would silently package nothing. |
+
+That last one also produces a standing note, because the path is fixed to
+`..\x64\Release`: the installer always ships that one configuration no
+matter what is being built.
+
+Expected output: two notes and `15 reference(s), 0 problem(s)`.
 
 ## Self test for the checkers
 
@@ -564,7 +577,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **29 mutations** one at a time --
+clean on the untouched copy, then applies **32 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -575,7 +588,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `29 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `32 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -708,4 +721,4 @@ python tools\selftest.py
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`29 case(s), 0 failure(s)`. Anything else is a regression.
+`32 case(s), 0 failure(s)`. Anything else is a regression.
