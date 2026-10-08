@@ -78,6 +78,11 @@ in 2026, which no longer ships `v143`).
   It accepts `x86` as a synonym for `Win32` and rejects anything else with a
   sentence instead of an MSBuild error code.
 
+To produce the release binaries in one go, `tools\release.cmd` builds both
+platforms, collects them under `release\` with their SHA-256 hashes, and can
+upload them to a GitHub release. The full procedure, including which four
+files carry the version number, is in [docs/RELEASE.md](docs/RELEASE.md).
+
 The `FilterKeysSetter.Setup` project needs the free
 [Microsoft Visual Studio Installer Projects](https://marketplace.visualstudio.com/items?itemName=VisualStudioClient.MicrosoftVisualStudio2022InstallerProjects)
 extension, version 3.0.0 or newer for VS 2026. Without it the solution still opens and the
