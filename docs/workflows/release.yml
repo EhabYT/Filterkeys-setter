@@ -1,0 +1,124 @@
+name: Release
+
+# Builds the two Release executables on a GitHub runner and attaches them to
+# a release, so cutting a release needs no Windows machine of one's own.
+#
+# Run it from the Actions tab (Run workflow) with the tag of an existing
+# release -- a draft counts -- or let it run automatically when a v* tag is
+# pushed.
+#
+# windows-2022 is pinned deliberately: windows-latest moves to the Visual
+# Studio 2026 image, whose toolset is v145. The project builds with either,
+# but release binaries should come from one known toolset rather than
+# whichever one the runner image happened to carry that week.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag to attach the binaries to, e.g. v1.11'
+        required: true
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  checks:
+    # The same static checks the build workflow runs. A release should not be
+    # cut from a tree that fails them.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Run every checker
+        run: |
+          python tools/check-dialog-layout.py
+          python tools/check-message-map.py
+          python tools/check-resources.py
+          python tools/check-error-handling.py
+          python tools/check-project.py
+          python tools/selftest.py
+
+  build:
+    needs: checks
+    runs-on: windows-2022
+
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [Win32, x64]
+
+    name: Release ${{ matrix.platform }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      # The project is built, not the solution: the solution calls the 32-bit
+      # platform x86 and would reject /p:Platform=Win32 with MSB4126.
+      - name: Build Release ${{ matrix.platform }}
+        run: >
+          msbuild FilterKeysSetter.vcxproj
+          /m
+          /p:Configuration=Release
+          /p:Platform=${{ matrix.platform }}
+          /p:OutDir=${{ github.workspace }}\artifacts\${{ matrix.platform }}\
+          /verbosity:minimal
+
+      # The version comes out of the resource script rather than the tag, so a
+      # mistyped tag cannot mislabel the file. check-resources.py has already
+      # confirmed that the .rc, the about box, the installer, the README and
+      # the changelog all agree on it.
+      - name: Read the version from the resource script
+        id: version
+        shell: pwsh
+        run: |
+          $rc = Get-Content FilterKeysSetter.rc -Encoding UTF8 -Raw
+          if ($rc -notmatch 'VALUE\s+"FileVersion",\s*"([\d.]+)"') {
+            Write-Error 'No FileVersion string in FilterKeysSetter.rc'
+            exit 1
+          }
+          $version = $Matches[1]
+          Write-Host "Version $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Name the executable
+        shell: pwsh
+        run: |
+          $platform = '${{ matrix.platform }}'.ToLower()
+          $name = "FilterKeysSetter-${{ steps.version.outputs.version }}-$platform.exe"
+          New-Item -ItemType Directory -Force -Path release | Out-Null
+          Copy-Item "artifacts\${{ matrix.platform }}\FilterKeysSetter.exe" "release\$name"
+          Get-FileHash "release\$name" -Algorithm SHA256 | Format-List
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: FilterKeysSetter-${{ matrix.platform }}
+          path: release/*.exe
+          if-no-files-found: error
+
+      # --clobber so re-running the workflow replaces the assets instead of
+      # failing on the second attempt.
+      - name: Attach to the release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = '${{ inputs.tag }}'
+          if (-not $tag) { $tag = '${{ github.ref_name }}' }
+          Write-Host "Attaching to $tag"
+          gh release upload $tag (Get-Item release\*.exe) --clobber

@@ -148,6 +148,21 @@ python tools\check-dialog-layout.py
 It found three undersized check boxes and the *Keyboard* preset button after the
 font change; all four have been widened.
 
+## Releases that need no Windows machine
+
+The release binaries were the one artefact that could not be produced from
+this environment: MFC needs MSVC. `docs/workflows/release.yml` moves that
+work to GitHub -- static checks, then `Release` builds of `Win32` and `x64`
+on `windows-2022`, named from the version in the resource script rather
+than from the tag, attached to the release with `gh release upload
+--clobber` so a re-run replaces the assets instead of failing.
+
+It lives under `docs/` rather than `.github/workflows/` because the token
+used here has no `workflow` scope and the push is rejected outright. Keeping
+the file in the repository anyway means it is reviewed and diffed like the
+rest; `check-project.py` scans it as a build script, so pointing it at the
+solution instead of the project is caught (self test case 34).
+
 ## Toolchain: Visual Studio 2022 and 2026
 
 Visual Studio 2026 (18.x) ships the **v145** platform toolset and no longer
@@ -577,7 +592,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **33 mutations** one at a time --
+clean on the untouched copy, then applies **34 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -588,7 +603,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `33 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `34 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -721,4 +736,4 @@ python tools\selftest.py
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`33 case(s), 0 failure(s)`. Anything else is a regression.
+`34 case(s), 0 failure(s)`. Anything else is a regression.

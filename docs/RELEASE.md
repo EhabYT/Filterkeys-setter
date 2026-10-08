@@ -70,7 +70,18 @@ tools\release.cmd v1.11
 ```
 
 With a tag, the script uploads the executables to that release with the
-GitHub CLI; drafts work too. The release notes are the `CHANGELOG.md` section for that version:
+GitHub CLI; drafts work too. ## Without a Windows machine
+
+With `docs/workflows/release.yml` installed under `.github/workflows/`, none
+of the build steps below have to happen locally: open the **Actions** tab,
+pick **Release**, **Run workflow**, and give it the tag (`v1.11`). The two
+executables are built on `windows-2022` and attached to that release, draft
+or not. [docs/workflows/README.md](workflows/README.md) explains why those
+files cannot be committed by the usual automation.
+
+The local route below stays useful for testing a build before tagging.
+
+The release notes are the `CHANGELOG.md` section for that version:
 
 ```cmd
 gh release edit v1.11 --notes-file notes.md

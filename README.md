@@ -14,6 +14,8 @@ Original version 1.02 from Soarer's article [FilterKeys Setter... for a faster k
 
 The full notes for each release are in [CHANGELOG.md](CHANGELOG.md); the
 entry for the current version is also the text of its GitHub release.
+Releases can be built by GitHub rather than by hand -- see
+[docs/workflows/](docs/workflows/README.md).
 
 * 1.11 2026-10-07 Dark theme with repeat sliders, tool tips on every setting,
   Alt accelerators on every control, Segoe UI dialog font, system DPI

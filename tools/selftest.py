@@ -150,6 +150,11 @@ CASES = [
      "## 1.11 -- 2026-10-07", "## 1.10 -- 2026-10-07",
      "newest CHANGELOG.md entry"),
 
+    ("release workflow pointed at the solution", PROJECT,
+     "docs/workflows/release.yml",
+     "msbuild FilterKeysSetter.vcxproj", "msbuild FilterKeysSetter.sln",
+     "but the solution only knows"),
+
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
      "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",
@@ -254,8 +259,11 @@ def run(checker, sandbox):
 
 
 def copy_tree(destination):
+    # docs/ is copied too: the workflow files under docs/workflows are
+    # checked like any other build script. Only docs/img, which is a few
+    # hundred kilobytes of screenshots, is left out.
     shutil.copytree(ROOT, destination,
-                    ignore=shutil.ignore_patterns(".git", "docs", "x64",
+                    ignore=shutil.ignore_patterns(".git", "img", "x64",
                                                   "Debug", "Release", "*.log"))
 
 
