@@ -36,6 +36,11 @@ covers the rest.
       (`UseOfMfc` is `Dynamic`), which keeps the executable at roughly
       76 KB but requires the *Microsoft Visual C++ Redistributable* on the
       target machine.
+- [ ] On a clean virtual machine **without** the Visual C++
+      Redistributable, the MSI-installed program still starts. If it stops
+      with a missing `msvcp140.dll`, the installer's app-local runtime set
+      is incomplete -- see *Deployment* in `README.md`, and record which
+      DLL was named.
 - [ ] The window title is *FilterKeys Setter*, the task bar icon is the
       application icon rather than the generic one.
 - [ ] The dialog opens in the **dark** theme on a first run, with a dark

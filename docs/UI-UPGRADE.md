@@ -619,11 +619,20 @@ legacy `.vdproj` that no tool validates:
 | `ProductCode` and `UpgradeCode` must both be GUIDs and must differ | A shared GUID makes an upgrade impossible. The prerequisite blocks carry their own `ProductCode` strings such as `.NETFramework,Version=v4.7.2`, so the check takes the GUID-shaped one. |
 | The packaged `FilterKeysSetter.exe` path must be an output the project writes | It is a plain file reference, not a project output, so a renamed folder would silently package nothing. |
 
+A third note lists the runtime files the installer ships beside the
+program (`mfc140u.dll`, `VCRUNTIME140.dll`, `VCRUNTIME140_1.dll`). That
+list came out of a Visual Studio dependency scan, which follows the
+executable's own imports -- so a DLL that only `mfc140u.dll` needs, such
+as `msvcp140.dll`, would not appear in it. Whether the set is complete can
+only be settled with `dumpbin /dependents` on Windows or by installing on
+a clean machine without the redistributable; both are written down under
+*Deployment* in the README and as the first entry in the test plan.
+
 That last one also produces a standing note, because the path is fixed to
 `..\x64\Release`: the installer always ships that one configuration no
 matter what is being built.
 
-Expected output: two notes and `15 reference(s), 0 problem(s)`.
+Expected output: three notes and `15 reference(s), 0 problem(s)`.
 
 ## Checking the documentation
 

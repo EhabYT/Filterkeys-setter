@@ -310,6 +310,21 @@ def check_installer(root, project):
         else:
             notes.append("the installer packages %s as a plain file reference, "
                          "so it always ships that configuration" % relative)
+    # The runtime set is dependency-scanned by Visual Studio and easy to
+    # lose track of, so print it on every run rather than only when it
+    # looks wrong. Whether it is complete can only be decided with
+    # dumpbin on Windows -- see Deployment in README.md.
+    shipped = []
+    for match in re.finditer(r'"SourcePath"\s*=\s*"\d+:([^"\\\\]+\.dll)"', text):
+        name = match.group(1)
+        block = text[match.end():match.end() + 900]
+        excluded = re.search(r'"Exclude"\s*=\s*"\d+:(\w+)"', block)
+        if excluded and excluded.group(1) == "FALSE":
+            shipped.append(name)
+    if shipped:
+        notes.append("the installer ships these runtime files beside the "
+                     "program: %s" % ", ".join(sorted(shipped)))
+
     return problems, notes
 
 

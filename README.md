@@ -126,6 +126,39 @@ What they cannot do is press a button. [docs/TESTING.md](docs/TESTING.md) is the
 pass that belongs with them: what the program writes, how to back it up first, and the
 checks to work through once a build exists.
 
+# Deployment
+
+The executable is small -- around 76 KB -- because MFC is linked
+dynamically (`UseOfMfc` is `Dynamic`). The runtime therefore has to come
+from somewhere. Two routes work:
+
+1. **The Microsoft Visual C++ Redistributable** installed on the target
+   machine. This is Microsoft's recommended route, keeps the files
+   serviced by Windows Update, and needs nothing in the package.
+2. **Application-local copies** next to the executable, which is what the
+   MSI does: it ships `mfc140u.dll`, `VCRUNTIME140.dll` and
+   `VCRUNTIME140_1.dll` beside the program.
+
+The UCRT itself (`ucrtbase.dll` and the `api-ms-win-crt-*` forwarders) is
+part of Windows 10 and later and is deliberately **not** shipped; the
+forwarder files the setup project used to carry were excluded for that
+reason.
+
+Before trusting either route, verify the closure on a Windows machine:
+
+```cmd
+dumpbin /dependents Release\FilterKeysSetter.exe
+dumpbin /dependents "C:\Windows\System32\mfc140u.dll"
+```
+
+Anything listed there that is not a Windows component has to be present.
+In particular, if `mfc140u.dll` lists `msvcp140.dll`, then that file
+belongs in the package as well -- the setup project does not currently
+carry it, because the dependency scan that produced its file list only
+followed the executable's own imports. The quickest proof either way is
+route 1 on a clean virtual machine: install the program **without** the
+redistributable and see whether it starts.
+
 # Usage
 
 | Dark theme (default) | Light theme |
