@@ -25,6 +25,7 @@ The version lives in these places:
 | `FilterKeysSetter.rc` | the about box caption `FilterKeysSetter Version 1.11` |
 | `FilterKeysSetter.Setup\FilterKeysSetter.Setup.vdproj` | `"ProductVersion" = "8:1.0.11"` |
 | `README.md` | a new line at the top of *Version history* |
+| `CHANGELOG.md` | a new `## <version> -- <date>` section; its text is what the GitHub release says |
 
 A new `ProductVersion` in the installer also needs a **new `ProductCode`**
 GUID, with `UpgradeCode` left alone -- that pair is what turns the next MSI
@@ -69,7 +70,13 @@ tools\release.cmd v1.11
 ```
 
 With a tag, the script uploads the executables to that release with the
-GitHub CLI; drafts work too. The release notes should name the version, what
+GitHub CLI; drafts work too. The release notes are the `CHANGELOG.md` section for that version:
+
+```cmd
+gh release edit v1.11 --notes-file notes.md
+```
+
+They should name the version, what
 changed, and that the FilterKeys and registry behaviour is unchanged.
 
 A draft release for 1.11 already exists in the repository, with notes, and is

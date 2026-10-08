@@ -7,7 +7,7 @@ Two kinds of damage are easy to do by hand and invisible until much later:
     (the dialog manager then wires DDX to the wrong control), an _APS_NEXT_*
     counter that has fallen behind, a symbol used in the .rc but never
     defined, or one defined and never used
-  * the version number living in five places and only being bumped in four
+  * the version number living in six places and only being bumped in five
   * an icon that is missing frames, so Windows rescales a neighbouring size
 
 Usage:  python tools/check-resources.py [repo root]
@@ -226,6 +226,15 @@ def check_versions(root):
         if match and match.group(1) != marketing:
             problems.append("the newest README version history entry is %s, "
                             "the binary is %s" % (match.group(1), marketing))
+
+    changelog = os.path.join(root, "CHANGELOG.md")
+    if os.path.exists(changelog):
+        match = re.search(r"^##\s*([\d.]+)\s", read(changelog), re.M)
+        if match is None:
+            problems.append("CHANGELOG.md has no version heading")
+        elif match.group(1) != marketing:
+            problems.append("the newest CHANGELOG.md entry is %s, the binary "
+                            "is %s" % (match.group(1), marketing))
 
     return problems, notes
 

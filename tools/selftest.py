@@ -146,6 +146,10 @@ CASES = [
      '"SourcePath" = "8:..\\\\bin\\\\FilterKeysSetter.exe"',
      "not an output path of the project"),
 
+    ("changelog left behind at the old version", RESOURCES, "CHANGELOG.md",
+     "## 1.11 -- 2026-10-07", "## 1.10 -- 2026-10-07",
+     "newest CHANGELOG.md entry"),
+
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
      "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",
