@@ -51,8 +51,9 @@ Default output locations, in case they are needed by hand:
 
 ## 3. Smoke test
 
-Run both binaries once, on a machine other than the one that built them if
-possible, and check:
+The full pass is [TESTING.md](TESTING.md); for a release, run both binaries
+once, on a machine other than the one that built them if possible, and
+check:
 
 - the dialog opens in the dark theme and the *Dark theme* check box switches
   it, surviving a restart

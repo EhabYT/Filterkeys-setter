@@ -122,6 +122,10 @@ python tools\selftest.py               :: breaks the sources on purpose to test 
 python tools\check-all.py              :: all of the above, with one verdict at the end
 ```
 
+What they cannot do is press a button. [docs/TESTING.md](docs/TESTING.md) is the manual
+pass that belongs with them: what the program writes, how to back it up first, and the
+checks to work through once a build exists.
+
 # Usage
 
 | Dark theme (default) | Light theme |
