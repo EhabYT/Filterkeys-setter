@@ -58,6 +58,11 @@ in 2026, which no longer ships `v143`).
   * VS 2026: *C++ MFC for latest v145 build tools (x86 & x64)*
   * VS 2022: *C++ MFC for latest v143 build tools (x86 & x64)*
 
+  Without it the build stops with `error MSB8041: MFC libraries are required for this project`.
+  The repository carries a `.vsconfig`, so Visual Studio offers to install the missing components
+  when the solution is opened; [docs/MFC.md](docs/MFC.md) covers the installer command line and the
+  cases where MFC is installed and the error appears anyway.
+
   Decline the *Retarget solution* prompt in VS 2026, or answer it with *Install missing platform
   toolset*: retargeting writes a fixed `<PlatformToolset>v145</PlatformToolset>` into the project
   and would break the build for anyone still on VS 2022.

@@ -513,6 +513,33 @@ Expected output: `3 file(s), 0 problem(s)`. The self test covers both
 directions: dropping a real check is caught, and so is removing the `(void)`
 marker.
 
+## MSB8041, the error everyone hits first
+
+MFC is not in the *Desktop development with C++* workload, so the first
+build on a fresh machine ends with `MSB8041: MFC libraries are required for
+this project` -- a message that does not say which architecture is missing.
+
+`Microsoft.CppBuild.targets` makes that decision on a single file:
+`$(VCToolsInstallDir)atlmfc\lib\$(_SpectreLibsDir)$(PlatformShortName)\mfcs140.lib`.
+`tools/build.cmd` now looks for exactly that file, once per platform being
+built, and refuses before MSBuild does:
+
+```
+MSVC toolset  : 14.44.35207
+MFC           : MISSING for x86
+```
+
+followed by the component to tick, the `setup.exe modify` line to paste,
+and a pointer to `docs/MFC.md`. Two details are easy to get wrong and are
+handled: the `Win32` platform looks in an **`x86`** folder, and the probe
+is a file test rather than a `vswhere` component query, because a
+side-by-side MFC installed under a versioned component id works just as
+well and would not answer to the id being asked about.
+
+A [`.vsconfig`](../.vsconfig) in the repository root lists the workload and
+the two components, which makes Visual Studio offer to install what is
+missing when the solution is opened.
+
 ## The build script itself
 
 `tools\build.cmd` is the first thing anyone will run on a Windows machine,
@@ -600,7 +627,7 @@ External URLs are left alone: there is no network here, and a page that
 moved is not this repository's fault. The anchor rule follows GitHub's
 slug algorithm -- lowercase, punctuation dropped, spaces to hyphens.
 
-Expected output: `5 document(s), 0 problem(s)`.
+Expected output: `6 document(s), 0 problem(s)`.
 
 ## Running them all at once
 

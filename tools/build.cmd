@@ -68,31 +68,80 @@ if not defined MSBUILD (
     goto :fail
 )
 
-rem MFC is not part of the "Desktop development with C++" workload. Without it
-rem the build dies at afxwin.h, which is the single most common failure here.
-set "MFCDIR="
-rem The id is the same in VS 2022 and VS 2026 -- only the display name changes
-rem ("latest v143" vs "latest v145"). The Spectre variant counts as well, and
-rem -requiresAny makes either one enough. A side-by-side MFC installed under a
-rem versioned id is not recognised, so this stays a warning, never a refusal.
-for /f "usebackq delims=" %%i in (`"%VSWHERE%" -latest -prerelease -products * -requiresAny -requires Microsoft.VisualStudio.Component.VC.ATLMFC Microsoft.VisualStudio.Component.VC.ATLMFC.Spectre -property installationPath 2^>nul`) do (
-    if not defined MFCDIR set "MFCDIR=%%i"
+rem MFC is not part of the "Desktop development with C++" workload, and its
+rem absence is the single most common failure here: MSBuild stops with
+rem
+rem   error MSB8041: MFC libraries are required for this project. Install them
+rem   from the Visual Studio Installer (Individual components tab) for any
+rem   toolsets and architectures being used.
+rem
+rem That check inside Microsoft.CppBuild.targets looks for exactly one file:
+rem   $(VCToolsInstallDir)atlmfc\lib\$(PlatformShortName)\mfcs140.lib
+rem so this script looks for the same file and says which architecture is
+rem missing before MSBuild has to. Component ids are not probed for that:
+rem a side-by-side MFC under a versioned id is just as usable, and the file
+rem is the thing that actually decides.
+set "VCTOOLSVER="
+if exist "%VSDIR%\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt" (
+    for /f "usebackq delims=" %%v in ("%VSDIR%\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt") do (
+        if not defined VCTOOLSVER set "VCTOOLSVER=%%v"
+    )
+)
+set "VCTOOLSDIR="
+if defined VCTOOLSVER (
+    set "VCTOOLSVER=!VCTOOLSVER: =!"
+    set "VCTOOLSDIR=%VSDIR%\VC\Tools\MSVC\!VCTOOLSVER!"
+)
+
+set "MFCMISSING="
+set "MFCFOUND="
+if defined VCTOOLSDIR (
+    for %%p in (%PLATFORMS%) do (
+        set "SHORT=x86"
+        if /i "%%p"=="x64" set "SHORT=x64"
+        if exist "!VCTOOLSDIR!\atlmfc\lib\!SHORT!\mfcs140.lib" (
+            set "MFCFOUND=!MFCFOUND! !SHORT!"
+        ) else (
+            set "MFCMISSING=!MFCMISSING! !SHORT!"
+        )
+    )
 )
 
 echo.
 echo Visual Studio : %VSNAME%
 echo Path          : %VSDIR%
 echo MSBuild       : %MSBUILD%
-if defined MFCDIR (
-    echo MFC           : installed
-) else (
-    echo MFC           : NOT DETECTED
+if not defined VCTOOLSDIR (
+    echo MFC           : not checked ^(no MSVC toolset folder under "%VSDIR%"^)
+) else if defined MFCMISSING (
+    echo MSVC toolset  : !VCTOOLSVER!
+    echo MFC           : MISSING for!MFCMISSING!
     echo.
-    echo     The MFC component is missing or vswhere cannot see it. If the build
-    echo     fails with "Cannot open include file: 'afxwin.h'", open the Visual
-    echo     Studio Installer, pick Modify, Individual components, and add
-    echo     "C++ MFC for latest v145 build tools" ^(VS 2026^) or
-    echo     "C++ MFC for latest v143 build tools" ^(VS 2022^).
+    echo     MSBuild would stop with error MSB8041. It looks for
+    echo         !VCTOOLSDIR!\atlmfc\lib\^<arch^>\mfcs140.lib
+    echo     and that file is not there for the architecture^(s^) above.
+    echo.
+    echo     Open the Visual Studio Installer, press Modify, open the
+    echo     "Individual components" tab, search for MFC and tick
+    echo         "C++ MFC for latest v143 build tools (x86 & x64)"   ^(VS 2022^)
+    echo         "C++ MFC for latest v145 build tools (x86 & x64)"   ^(VS 2026^)
+    echo     One component covers both x86 and x64. If the project is built
+    echo     with Spectre mitigations, tick the matching Spectre variant too.
+    echo.
+    echo     Or from an elevated command prompt, in one go:
+    echo         "%%ProgramFiles(x86)%%\Microsoft Visual Studio\Installer\setup.exe" ^^
+    echo             modify --installPath "%VSDIR%" ^^
+    echo             --add Microsoft.VisualStudio.Component.VC.ATLMFC ^^
+    echo             --quiet --norestart
+    echo.
+    echo     The repository also carries a .vsconfig listing this component;
+    echo     Visual Studio offers to install what is missing when the solution
+    echo     is opened. See docs\MFC.md.
+    echo.
+    goto :fail
+) else (
+    echo MSVC toolset  : !VCTOOLSVER!
+    echo MFC           : installed for!MFCFOUND!
 )
 echo.
 
