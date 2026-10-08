@@ -513,6 +513,27 @@ Expected output: `3 file(s), 0 problem(s)`. The self test covers both
 directions: dropping a real check is caught, and so is removing the `(void)`
 marker.
 
+## Handler signatures
+
+A message map casts each handler to a fixed signature, so the wrong
+parameter list does not produce an error at the handler -- it produces one
+at `END_MESSAGE_MAP`, reading *"term does not evaluate to a function taking
+2 arguments"*. With nine `ON_NOTIFY` entries added for the custom-draw
+buttons, that was a realistic way to lose an afternoon.
+
+`check-message-map.py` now carries the expected return type and parameter
+list for every macro the project uses and compares them against the
+`afx_msg` declaration:
+
+```
+FilterKeysSetterDlg.cpp:293: ON_NOTIFY needs OnCustomDrawSlider declared as
+void(NMHDR*, LRESULT*), but it is void(NMHDR*)
+```
+
+Parameter names are stripped, `CDC *pDC` and `CDC* pDC` compare equal, and
+`LPNMHDR` counts as `NMHDR*`. Macros that are not in the table are reported
+as unchecked rather than treated as correct.
+
 ## MSB8041, the error everyone hits first
 
 MFC is not in the *Desktop development with C++* workload, so the first
@@ -665,7 +686,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **37 mutations** one at a time --
+clean on the untouched copy, then applies **39 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -676,7 +697,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `37 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `39 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -809,4 +830,4 @@ python tools\selftest.py
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`37 case(s), 0 failure(s)`. Anything else is a regression.
+`39 case(s), 0 failure(s)`. Anything else is a regression.

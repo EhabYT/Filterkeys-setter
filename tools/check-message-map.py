@@ -18,7 +18,10 @@ What is checked:
   * every control ID used by `DDX_*`, the tool tip table or `GetDlgItem`
     exists in a dialog in the .rc, not merely in resource.h,
   * tool tips attached to a static carry SS_NOTIFY, without which the static
-    never sees the mouse and the tip never appears.
+    never sees the mouse and the tip never appears,
+  * the declared signature of each handler matches what its macro expands
+    to -- the wrong parameter list is what produces MFC's famously opaque
+    "term does not evaluate to a function taking 2 arguments".
 
 Usage:  python tools/check-message-map.py [file.cpp ...]
 Exit code 1 if anything looks wrong.
@@ -50,6 +53,95 @@ WM_HANDLERS = {
     "ON_WM_SIZE": "OnSize",
     "ON_WM_CLOSE": "OnClose",
 }
+
+# What each macro expects the handler to look like: return type and
+# parameter types, names stripped. MFC casts the handler to a fixed
+# signature inside the map, so a mismatch is a compile error at the
+# END_MESSAGE_MAP line, pointing nowhere near the handler itself.
+SIGNATURES = {
+    "ON_WM_SYSCOMMAND": ("void", ["UINT", "LPARAM"]),
+    "ON_WM_PAINT": ("void", []),
+    "ON_WM_QUERYDRAGICON": ("HCURSOR", []),
+    "ON_WM_ERASEBKGND": ("BOOL", ["CDC*"]),
+    "ON_WM_CTLCOLOR": ("HBRUSH", ["CDC*", "CWnd*", "UINT"]),
+    "ON_WM_HSCROLL": ("void", ["UINT", "UINT", "CScrollBar*"]),
+    "ON_WM_VSCROLL": ("void", ["UINT", "UINT", "CScrollBar*"]),
+    "ON_WM_SETTINGCHANGE": ("void", ["UINT", "LPCTSTR"]),
+    "ON_WM_DESTROY": ("void", []),
+    "ON_WM_TIMER": ("void", ["UINT_PTR"]),
+    "ON_WM_SIZE": ("void", ["UINT", "int", "int"]),
+    "ON_WM_CLOSE": ("void", []),
+    "ON_COMMAND": ("void", []),
+    "ON_BN_CLICKED": ("void", []),
+    "ON_EN_CHANGE": ("void", []),
+    "ON_EN_KILLFOCUS": ("void", []),
+    "ON_EN_SETFOCUS": ("void", []),
+    "ON_STN_CLICKED": ("void", []),
+    "ON_CBN_SELCHANGE": ("void", []),
+    "ON_NOTIFY": ("void", ["NMHDR*", "LRESULT*"]),
+    "ON_NOTIFY_EX": ("BOOL", ["UINT", "NMHDR*", "LRESULT*"]),
+}
+
+# Spellings that mean the same thing to the compiler.
+TYPE_ALIASES = {
+    "LPNMHDR": "NMHDR*",
+    "NMHDR *": "NMHDR*",
+    "LPCWSTR": "LPCTSTR",
+    "LPCSTR": "LPCTSTR",
+    "const wchar_t*": "LPCTSTR",
+    "UINT_PTR": "UINT_PTR",
+    "unsigned int": "UINT",
+    "WPARAM": "WPARAM",
+}
+
+
+def normalise_type(text):
+    """'CScrollBar *pScrollBar' -> 'CScrollBar*', 'const CString& s' -> 'const CString&'."""
+    text = re.sub(r"\s+", " ", text).strip()
+    # Drop the parameter name: the last identifier, unless the whole thing
+    # is just a type.
+    text = re.sub(r"\b(\w+)\s*$", lambda m: "" if not _is_type_word(m.group(1)) else m.group(1),
+                  text).strip()
+    text = text.replace(" *", "*").replace("* ", "*")
+    text = text.replace(" &", "&").replace("& ", "&")
+    return TYPE_ALIASES.get(text, text)
+
+
+_TYPE_WORDS = {"void", "int", "UINT", "BOOL", "LPARAM", "WPARAM", "HCURSOR",
+               "HBRUSH", "LRESULT", "UINT_PTR", "LPCTSTR", "LPCWSTR",
+               "DWORD", "WORD", "char", "wchar_t", "bool", "long", "short",
+               "unsigned", "size_t"}
+
+
+def _is_type_word(word):
+    return word in _TYPE_WORDS
+
+
+def parse_signature(declaration):
+    """'afx_msg void OnHScroll(UINT a, UINT b, CScrollBar* c)' -> ('void', [...])."""
+    match = re.match(r"\s*(?:afx_msg\s+)?(.+?)\b(\w+)\s*\((.*)\)\s*$",
+                     declaration.strip(), re.S)
+    if match is None:
+        return None
+    ret = re.sub(r"\s+", " ", match.group(1)).strip()
+    ret = ret.replace(" *", "*").replace("* ", "*")
+    inner = match.group(3).strip()
+    if inner in ("", "void"):
+        return ret, []
+    params, depth, current = [], 0, ""
+    for ch in inner:
+        if ch == "," and depth == 0:
+            params.append(current)
+            current = ""
+            continue
+        if ch in "<(":
+            depth += 1
+        elif ch in ">)":
+            depth -= 1
+        current += ch
+    params.append(current)
+    return ret, [normalise_type(p) for p in params]
+
 
 # Macros that name their handler explicitly, with the argument index of the
 # handler and of the control ID (None when the macro carries no ID).
@@ -109,9 +201,20 @@ def declarations(sources):
                         break
                 body.append(text[i])
                 i += 1
-            members = set(re.findall(r"afx_msg[^;]*?\b(\w+)\s*\(", "".join(body)))
+            joined = "".join(body)
+            members = set(re.findall(r"afx_msg[^;]*?\b(\w+)\s*\(", joined))
             found.setdefault(name, set()).update(members)
+            for line in re.findall(r"afx_msg[^;]+;", joined):
+                parsed = parse_signature(line.rstrip(";").replace("afx_msg", "", 1))
+                if parsed is not None:
+                    member = re.search(r"\b(\w+)\s*\(", line)
+                    if member:
+                        SIGNATURES_SEEN.setdefault(name, {})[member.group(1)] = parsed
     return found
+
+
+# class -> member -> (return type, [parameter types]), filled by declarations()
+SIGNATURES_SEEN = {}
 
 
 def definitions(text):
@@ -278,6 +381,17 @@ def check(sources, header_paths, resource_path):
                     if handler not in defs.get(cls, set()):
                         problems.append("%s:%d: %s is mapped but not defined in %s"
                                         % (rel, line, handler, cls))
+
+                    expected = SIGNATURES.get(macro)
+                    actual = SIGNATURES_SEEN.get(cls, {}).get(handler)
+                    if expected and actual:
+                        want = "%s(%s)" % (expected[0], ", ".join(expected[1]))
+                        have = "%s(%s)" % (actual[0], ", ".join(actual[1]))
+                        if want != have:
+                            problems.append("%s:%d: %s needs %s declared as "
+                                            "%s, but it is %s"
+                                            % (rel, line, macro, handler,
+                                               want, have))
 
         for cls, members in decls.items():
             if cls not in maps:

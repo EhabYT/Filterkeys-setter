@@ -182,6 +182,16 @@ CASES = [
      "::RegSetValueEx(",
      "the result of RegSetValueEx is thrown away"),
 
+    ("notification handler missing its LRESULT argument", MAP, HDR,
+     "afx_msg void OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult);",
+     "afx_msg void OnCustomDrawSlider(NMHDR* pNMHDR);",
+     "ON_NOTIFY needs OnCustomDrawSlider declared as"),
+
+    ("handler returning the wrong type", MAP, HDR,
+     "afx_msg BOOL OnEraseBkgnd(CDC* pDC);",
+     "afx_msg void OnEraseBkgnd(CDC* pDC);",
+     "ON_WM_ERASEBKGND needs OnEraseBkgnd declared as"),
+
     # -- check-resources.py ----------------------------------------------
     ("two symbols sharing a numeric value", RESOURCES, RES,
      "#define IDC_STATUS                      1028",
