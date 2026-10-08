@@ -46,6 +46,13 @@ the message says what to do instead of what went wrong.
    - Visual Studio 2026 (v145): *C++ MFC for latest v145 build tools
      (x86 & x64)*
 
+   On a German installation the same two components read:
+
+   | Visual Studio | Component |
+   | --- | --- |
+   | 2026 (v145) | *C++-MFC für die neuesten Buildtools v145 (x86 und x64)* |
+   | 2022 (v143) | *C++-MFC für die neuesten Buildtools v143 (x86 und x64)* |
+
    One component covers **both** x86 and x64, which is what this project
    needs. Only tick a *with Spectre Mitigations* variant if you build with
    Spectre mitigations on, and only tick a versioned component
@@ -74,6 +81,21 @@ The repository carries a [`.vsconfig`](../.vsconfig) listing the three
 components this project needs. Visual Studio reads it when the solution is
 opened and offers to install whatever is missing, which is the least
 error-prone route of the three.
+
+## Checking that it worked
+
+Re-run the build script. It prints what it found before it starts:
+
+```
+MSVC toolset  : 14.50.35904
+MFC           : installed for x86 x64
+```
+
+The toolset version is read from
+`VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt`, and if that file
+is missing or names a toolset that is not on disk, from the newest folder
+under `VC\Tools\MSVC`. A `14.5x` version means v145, Visual Studio 2026;
+`14.4x` means v143, Visual Studio 2022.
 
 ## It is installed and the error persists
 

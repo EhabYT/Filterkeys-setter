@@ -87,6 +87,16 @@ if exist "%VSDIR%\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt" (
         if not defined VCTOOLSVER set "VCTOOLSVER=%%v"
     )
 )
+rem VS 2026 keeps the same layout, but if that file is ever missing or names
+rem a toolset that is not installed, fall back to the newest folder present.
+if defined VCTOOLSVER (
+    set "VCTOOLSVER=!VCTOOLSVER: =!"
+    if not exist "%VSDIR%\VC\Tools\MSVC\!VCTOOLSVER!\" set "VCTOOLSVER="
+)
+if not defined VCTOOLSVER (
+    for /f "delims=" %%d in ('dir /b /ad /on "%VSDIR%\VC\Tools\MSVC" 2^>nul') do set "VCTOOLSVER=%%d"
+)
+
 set "VCTOOLSDIR="
 if defined VCTOOLSVER (
     set "VCTOOLSVER=!VCTOOLSVER: =!"
