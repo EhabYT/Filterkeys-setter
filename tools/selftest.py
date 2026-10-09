@@ -192,6 +192,15 @@ CASES = [
      "afx_msg void OnEraseBkgnd(CDC* pDC);",
      "ON_WM_ERASEBKGND needs OnEraseBkgnd declared as"),
 
+    ("wrapper bound to the wrong kind of control", MAP, HDR,
+     "CSliderCtrl m_sliderDelay;", "CButton m_sliderDelay;",
+     "binds it to a CButton"),
+
+    ("trackbar carrying a button style", LAYOUT, RC,
+     'IDC_DELAY_SLIDER,"msctls_trackbar32",TBS_NOTICKS',
+     'IDC_DELAY_SLIDER,"msctls_trackbar32",BS_AUTOCHECKBOX',
+     "a style of Button"),
+
     # -- check-resources.py ----------------------------------------------
     ("two symbols sharing a numeric value", RESOURCES, RES,
      "#define IDC_STATUS                      1028",

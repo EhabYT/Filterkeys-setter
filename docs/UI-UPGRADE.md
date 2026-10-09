@@ -513,6 +513,34 @@ Expected output: `3 file(s), 0 problem(s)`. The self test covers both
 directions: dropping a real check is caught, and so is removing the `(void)`
 marker.
 
+## Styles and wrappers that do not belong together
+
+Two mistakes the compiler is perfectly happy with:
+
+```
+CONTROL "",IDC_DELAY_SLIDER,"msctls_trackbar32",BS_AUTOCHECKBOX | WS_TABSTOP,...
+DDX_Control(pDX, IDC_DELAY_SLIDER, m_sliderDelay);   // declared CButton
+```
+
+The first gives a trackbar a style belonging to buttons; the resource
+compiler just writes the bits and the trackbar ignores them. The second
+compiles because `DDX_Control` takes a `CWnd&` -- and then every
+`SetRange`, `SetPos` and `GetPos` goes to a control that has no idea what
+those are.
+
+`check-dialog-layout.py` now maps each style prefix to the classes that
+own it (`BS_` to Button, `TBS_` to the trackbar, `SS_` to Static, and so
+on) and rejects a `CONTROL` statement whose class cannot carry its styles,
+or whose class is not one it knows at all. `check-message-map.py` maps
+each MFC wrapper to the resource statements it may be attached to and
+checks every `DDX_Control` pairing:
+
+```
+IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
+```
+
+Both are covered by the self test, which now runs **41 mutations**.
+
 ## Handler signatures
 
 A message map casts each handler to a fixed signature, so the wrong
@@ -695,7 +723,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **39 mutations** one at a time --
+clean on the untouched copy, then applies **41 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -706,7 +734,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `39 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `41 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -839,4 +867,4 @@ python tools\selftest.py
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`39 case(s), 0 failure(s)`. Anything else is a regression.
+`41 case(s), 0 failure(s)`. Anything else is a regression.

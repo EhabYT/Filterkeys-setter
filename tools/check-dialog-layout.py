@@ -11,6 +11,7 @@ hand and that otherwise only show up once the program is running:
   * the same Alt accelerator claimed by two controls
   * a label accelerator that does not hand the focus to its own input
   * a focusable CONTROL statement without WS_TABSTOP
+  * a style constant that belongs to a different window class
 
 The text width model is an approximation of Segoe UI, so treat its warnings as
 "look at this in the dialog editor", not as hard failures.
@@ -103,6 +104,59 @@ STATIC_KINDS = ("LTEXT", "RTEXT", "CTEXT", "GROUPBOX", "ICON")
 FOCUSABLE_CLASSES = ("Button", "Edit", "ComboBox", "ListBox",
                      "msctls_trackbar32", "msctls_updown32", "SysListView32",
                      "SysTreeView32", "SysTabControl32")
+
+
+# Which style prefixes belong to which window class. A BS_ style on a
+# trackbar or a TBS_ style on a button compiles happily and then does
+# nothing at all, which is a bad way to lose an hour.
+STYLE_PREFIXES = {
+    "BS_": ("Button",),
+    "SS_": ("Static",),
+    "ES_": ("Edit", "RichEdit20W"),
+    "CBS_": ("ComboBox",),
+    "LBS_": ("ListBox",),
+    "SBS_": ("ScrollBar",),
+    "TBS_": ("msctls_trackbar32",),
+    "UDS_": ("msctls_updown32",),
+    "PBS_": ("msctls_progress32",),
+    "LVS_": ("SysListView32",),
+    "TVS_": ("SysTreeView32",),
+    "TCS_": ("SysTabControl32",),
+}
+
+KNOWN_CLASSES = tuple(sorted({cls for classes in STYLE_PREFIXES.values()
+                              for cls in classes}))
+
+
+def control_class(ctl):
+    """The window class of a CONTROL statement, or None for the shorthands."""
+    if ctl["kind"] != "CONTROL":
+        return None
+    match = re.search(r'"[^"]*"\s*,\s*[\w()+ -]+,\s*"([^"]+)"', ctl["line"])
+    return match.group(1) if match else None
+
+
+def check_classes_and_styles(controls):
+    """CONTROL statements naming a class that cannot carry their styles."""
+    problems = []
+    for ctl in controls:
+        cls = control_class(ctl)
+        if cls is None:
+            continue
+        if cls not in KNOWN_CLASSES:
+            problems.append("%s uses window class %s, which is not one of "
+                            "the classes this dialog is checked against (%s)"
+                            % (ctl["id"], cls, ", ".join(KNOWN_CLASSES)))
+            continue
+        for style in re.findall(r"\b([A-Z]+_)[A-Z0-9_]+", ctl["line"]):
+            classes = STYLE_PREFIXES.get(style)
+            if classes and cls not in classes:
+                bad = re.search(r"\b(%s[A-Z0-9_]+)" % style, ctl["line"])
+                problems.append("%s is a %s but carries %s, a style of %s"
+                                % (ctl["id"], cls, bad.group(1),
+                                   " or ".join(classes)))
+                break
+    return problems
 
 
 def is_focusable(ctl):
@@ -229,6 +283,7 @@ def check(rc, name):
 
     problems += check_focus_targets(controls)
     problems += check_tabstops(controls)
+    problems += check_classes_and_styles(controls)
 
     return width, height, len(controls), problems
 

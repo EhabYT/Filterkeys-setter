@@ -19,6 +19,8 @@ What is checked:
     exists in a dialog in the .rc, not merely in resource.h,
   * tool tips attached to a static carry SS_NOTIFY, without which the static
     never sees the mouse and the tip never appears,
+  * each DDX_Control member has a type that matches the control's window
+    class -- a CButton bound to a trackbar compiles and then misbehaves,
   * the declared signature of each handler matches what its macro expands
     to -- the wrong parameter list is what produces MFC's famously opaque
     "term does not evaluate to a function taking 2 arguments".
@@ -246,6 +248,57 @@ def ddx_ids(text):
     return set(re.findall(r"DDX_\w+\s*\(\s*pDX\s*,\s*(\w+)", text))
 
 
+# MFC control wrapper -> the resource statements and window classes it can
+# legitimately be attached to. DDX_Control takes a CWnd&, so the compiler
+# accepts any pairing; what goes wrong goes wrong at run time.
+WRAPPER_TARGETS = {
+    "CEdit": ("EDITTEXT", "Edit"),
+    "CButton": ("PUSHBUTTON", "DEFPUSHBUTTON", "GROUPBOX", "Button"),
+    "CStatic": ("LTEXT", "RTEXT", "CTEXT", "ICON", "Static"),
+    "CSliderCtrl": ("msctls_trackbar32",),
+    "CSpinButtonCtrl": ("msctls_updown32",),
+    "CProgressCtrl": ("msctls_progress32",),
+    "CComboBox": ("COMBOBOX", "ComboBox"),
+    "CListBox": ("LISTBOX", "ListBox"),
+    "CListCtrl": ("SysListView32",),
+    "CTreeCtrl": ("SysTreeView32",),
+    "CTabCtrl": ("SysTabControl32",),
+}
+
+
+def member_types(paths):
+    """member name -> declared type, for the control wrappers we know."""
+    found = {}
+    for path in paths:
+        text = strip_comments(read(path))
+        for match in re.finditer(r"\b(C[A-Za-z]+)\s+(m_\w+)\s*;", text):
+            if match.group(1) in WRAPPER_TARGETS:
+                found[match.group(2)] = match.group(1)
+    return found
+
+
+def check_ddx_types(text, controls, types, rel):
+    """DDX_Control(pDX, IDC_X, m_y) with a wrapper the control cannot be."""
+    problems = []
+    for match in re.finditer(r"DDX_Control\s*\(\s*\w+\s*,\s*(\w+)\s*,\s*(\w+)\s*\)",
+                             text):
+        control, member = match.group(1), match.group(2)
+        wrapper = types.get(member)
+        if wrapper is None or control not in controls:
+            continue
+        kind, line = controls[control]
+        if kind == "CONTROL":
+            cls = re.search(r'"[^"]*"\s*,\s*[\w()+ -]+,\s*"([^"]+)"', line)
+            actual = cls.group(1) if cls else kind
+        else:
+            actual = kind
+        allowed = WRAPPER_TARGETS[wrapper]
+        if actual not in allowed:
+            problems.append("%s: %s is a %s, but %s binds it to a %s"
+                            % (rel, control, actual, member, wrapper))
+    return problems
+
+
 def dialog_controls(rc_path):
     """control ID -> (kind, full resource line), across every dialog."""
     text = strip_comments(read(rc_path))
@@ -278,10 +331,15 @@ def check_wiring(sources, rc_path):
         return ["%s: no dialog controls found" % os.path.relpath(rc_path, ROOT)], []
 
     static_kinds = ("LTEXT", "RTEXT", "CTEXT")
+    headers = [os.path.join(ROOT, h) for h in
+               ("FilterKeysSetterDlg.h", "FilterKeysSetter.h")]
+    types = member_types(sources + [h for h in headers if os.path.isfile(h)])
 
     for path in sources:
         text = strip_comments(read(path))
         rel = os.path.relpath(path, ROOT)
+
+        problems += check_ddx_types(text, controls, types, rel)
 
         referenced = set()
         referenced |= ddx_ids(text)
