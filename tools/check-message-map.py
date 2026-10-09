@@ -367,7 +367,7 @@ def check_wiring(sources, rc_path):
             uncovered = sorted(c for c, (kind, _line) in controls.items()
                                if c not in tips
                                and c not in ("IDOK", "IDCANCEL")
-                               and kind != "ICON")
+                               and kind not in ("ICON", "GROUPBOX"))
             for control in uncovered:
                 notes.append("%s: %s has no tool tip" % (rel, control))
 

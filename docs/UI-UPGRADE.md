@@ -467,7 +467,7 @@ fails, then restoring it.
 
 `tools/check-resources.py` covers the bookkeeping that no compiler complains
 about. Run it with `python tools/check-resources.py`; it prints
-`33 symbol(s), 0 problem(s)` and exits 0 when the repository is healthy.
+`38 symbol(s), 0 problem(s)` and exits 0 when the repository is healthy.
 
 | It fails when | Why that matters |
 | --- | --- |
@@ -535,6 +535,40 @@ call is the only way to write them.
 Expected output: `3 file(s), 0 problem(s)`. The self test covers both
 directions: dropping a real check is caught, and so is removing the `(void)`
 marker.
+
+## What the first real screenshot showed
+
+Everything above was written without a compiler. The first screenshot of
+the program actually running showed two faults that no static check could
+have found, because both are about what the visual style engine does with
+a control rather than about what the code says.
+
+**White edit boxes in a dark dialog.** `OnCtlColor` returns the surface
+brush for `CTLCOLOR_EDIT`, which is correct and was not enough: a *themed*
+edit control paints its own background from the visual style and ignores
+that brush. The boxes stayed white with dark text. `CTheme::ApplyToControl`
+now detaches `Edit` from the style the same way it already detached check
+boxes and statics, after which the brush is honoured.
+
+**A line through two group box captions.** *Load settings* and *Test area*
+were struck through by their own frame. A classic group box draws its
+frame as a plain rectangle and relies on the caption being painted with an
+opaque background -- but the theme hands every static a hollow brush and
+`TRANSPARENT` background mode, so the line stayed visible behind the text.
+
+The fix is the same approach the push buttons already use: let the control
+keep the visual style so that it still sends `NM_CUSTOMDRAW`, and draw it
+here. `PaintThemedGroupBox` reproduces the gradient slice behind the box,
+then draws the frame as four separate lines so the top one can stop before
+the caption and resume after it, and finally the caption in the theme's
+text colour. The five group boxes needed real control IDs for that --
+`IDC_GRP_SETTINGS` and friends, replacing `IDC_STATIC`, which is `-1` for
+all of them and cannot be addressed by `ON_NOTIFY`.
+
+Worth noting what this says about the checkers: they verified that the
+handler existed, was declared, was mapped, had the right signature and
+addressed a control that exists. All of that was true while the dialog
+still looked wrong.
 
 ## Colours the documentation claims
 
@@ -907,6 +941,6 @@ python tools\selftest.py
 ```
 
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
-a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
+a single note about `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
 `44 case(s), 0 failure(s)`. Anything else is a regression.

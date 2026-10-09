@@ -225,7 +225,7 @@ CASES = [
      "share the value 1027"),
 
     ("_APS_NEXT_CONTROL_VALUE left behind", RESOURCES, RES,
-     "#define _APS_NEXT_CONTROL_VALUE         1029",
+     "#define _APS_NEXT_CONTROL_VALUE         1034",
      "#define _APS_NEXT_CONTROL_VALUE         1021",
      "is already taken"),
 

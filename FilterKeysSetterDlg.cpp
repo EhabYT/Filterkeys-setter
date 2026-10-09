@@ -16,6 +16,71 @@ namespace
 	// Paints a push button in the dark palette. Lives here rather than in
 	// either dialog so the About box cannot drift away from the main window.
 	// Returns false when the caller should let the system draw the button.
+	// A classic (unthemed) group box draws its frame straight across the
+	// caption, which is what put a line through "Load settings" and
+	// "Test area". Drawing it here keeps the caption legible and lets the
+	// frame use the accent colour instead of the 3D edge colours.
+	bool PaintThemedGroupBox(const CTheme& theme, LPNMCUSTOMDRAW pcd,
+	                         const CRect& rcBehind)
+	{
+		if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
+			return false;
+		}
+
+		CDC* pDC = CDC::FromHandle(pcd->hdc);
+		CWnd* pBox = CWnd::FromHandle(pcd->hdr.hwndFrom);
+		if (pDC == NULL || pBox == NULL) {
+			return false;
+		}
+
+		const ThemePalette& pal = theme.Palette();
+		CRect rc(pcd->rc);
+
+		// Nothing has erased the background: WM_CTLCOLORSTATIC handed this
+		// control a hollow brush.
+		theme.PaintBackgroundSlice(*pDC, rcBehind, rc);
+
+		CString strText;
+		pBox->GetWindowText(strText);
+
+		const int oldMode = pDC->SetBkMode(TRANSPARENT);
+		const COLORREF oldText = pDC->SetTextColor(pal.clrText);
+		CFont* pFont = pBox->GetFont();
+		CFont* pOldFont = (pFont != NULL) ? pDC->SelectObject(pFont) : NULL;
+
+		const CSize szText = pDC->GetTextExtent(strText);
+		const int kIndent = 8;          // where the caption starts
+		const int kPadding = 3;         // clear space either side of it
+
+		// The frame starts halfway down the caption, as Windows draws it.
+		CRect rcFrame(rc);
+		rcFrame.top += szText.cy / 2;
+		rcFrame.DeflateRect(0, 0, 1, 1);
+
+		const COLORREF clrEdge = pal.clrAccentMuted;
+		// Four separate lines rather than Draw3dRect, because the top one
+		// has to stop at the caption and start again after it.
+		pDC->FillSolidRect(rcFrame.left, rcFrame.top, 1, rcFrame.Height(), clrEdge);
+		pDC->FillSolidRect(rcFrame.right, rcFrame.top, 1, rcFrame.Height(), clrEdge);
+		pDC->FillSolidRect(rcFrame.left, rcFrame.bottom, rcFrame.Width() + 1, 1, clrEdge);
+
+		const int gapLeft  = rc.left + kIndent - kPadding;
+		const int gapRight = min(gapLeft + szText.cx + 2 * kPadding, rcFrame.right);
+		pDC->FillSolidRect(rcFrame.left, rcFrame.top,
+		                   max(gapLeft - rcFrame.left, 0), 1, clrEdge);
+		pDC->FillSolidRect(gapRight, rcFrame.top,
+		                   max(rcFrame.right - gapRight, 0), 1, clrEdge);
+
+		pDC->TextOut(rc.left + kIndent, rc.top, strText);
+
+		if (pOldFont != NULL) {
+			pDC->SelectObject(pOldFont);
+		}
+		pDC->SetTextColor(oldText);
+		pDC->SetBkMode(oldMode);
+		return true;
+	}
+
 	bool PaintThemedPushButton(const CTheme& theme, LPNMCUSTOMDRAW pcd)
 	{
 		// Light mode keeps the native button, which is exactly what it
@@ -302,6 +367,12 @@ BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_NORMAL, OnCustomDrawButton)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_DEFAULTS, OnCustomDrawButton)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_ORIGINAL, OnCustomDrawButton)
+	// Group boxes are drawn here too; the classic frame crosses its caption.
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_SETTINGS, OnCustomDrawGroupBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_FLAGS, OnCustomDrawGroupBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_APPLIED, OnCustomDrawGroupBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_LOAD, OnCustomDrawGroupBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_TEST, OnCustomDrawGroupBox)
 	ON_WM_SETTINGCHANGE()
 END_MESSAGE_MAP()
 
@@ -640,6 +711,35 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 
 	default:
 		return;
+	}
+}
+
+void CFilterKeysSetterDlg::OnCustomDrawGroupBox(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
+	*pResult = CDRF_DODEFAULT;
+	if (pcd == NULL) {
+		return;
+	}
+
+	// The slice of the dialog gradient sitting behind this group box, in
+	// the group box's own coordinates.
+	CRect rcClient;
+	GetClientRect(&rcClient);
+
+	CRect rcBox;
+	CWnd* pBox = CWnd::FromHandle(pcd->hdr.hwndFrom);
+	if (pBox == NULL) {
+		return;
+	}
+	pBox->GetWindowRect(&rcBox);
+	ScreenToClient(&rcBox);
+
+	CRect behind(rcClient);
+	behind.OffsetRect(-rcBox.left, -rcBox.top);
+
+	if (PaintThemedGroupBox(m_theme, pcd, behind)) {
+		*pResult = CDRF_SKIPDEFAULT;
 	}
 }
 

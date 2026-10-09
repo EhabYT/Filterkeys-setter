@@ -101,11 +101,11 @@ BEGIN
     PUSHBUTTON      "Cancel",IDCANCEL,120,256,48,14
     PUSHBUTTON      "A&pply",IDC_APPLY,174,256,48,14
 
-    GROUPBOX        "Settings",IDC_STATIC,6,6,126,164
-    GROUPBOX        "Flags",IDC_STATIC,138,6,84,112
-    GROUPBOX        "When applied",IDC_STATIC,138,122,84,40
-    GROUPBOX        "Load settings",IDC_STATIC,6,176,216,28
-    GROUPBOX        "Test area (click Apply first)",IDC_STATIC,6,208,216,28
+    GROUPBOX        "Settings",IDC_GRP_SETTINGS,6,6,126,164
+    GROUPBOX        "Flags",IDC_GRP_FLAGS,138,6,84,112
+    GROUPBOX        "When applied",IDC_GRP_APPLIED,138,122,84,40
+    GROUPBOX        "Load settings",IDC_GRP_LOAD,6,176,216,28
+    GROUPBOX        "Test area (click Apply first)",IDC_GRP_TEST,6,208,216,28
 END
 
 

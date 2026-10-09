@@ -254,7 +254,11 @@ void CTheme::ApplyToControl(HWND hWndControl) const
 	// notification is what CFilterKeysSetterDlg uses to paint them.
 	const bool isButton = (_tcsicmp(szClass, _T("Button")) == 0);
 	const bool isStatic = (_tcsicmp(szClass, _T("Static")) == 0);
-	if (!isButton && !isStatic) {
+	// Edit controls are detached as well. A themed edit paints its own
+	// background from the visual style and ignores the brush returned by
+	// WM_CTLCOLOREDIT, which left white boxes sitting in a dark dialog.
+	const bool isEdit   = (_tcsicmp(szClass, _T("Edit")) == 0);
+	if (!isButton && !isStatic && !isEdit) {
 		return;
 	}
 
@@ -262,7 +266,12 @@ void CTheme::ApplyToControl(HWND hWndControl) const
 		const LONG style = ::GetWindowLong(hWndControl, GWL_STYLE);
 		const LONG type = style & BS_TYPEMASK;
 		const bool isPushButton = (type == BS_PUSHBUTTON || type == BS_DEFPUSHBUTTON);
-		if (isPushButton) {
+		// Group boxes stay with the style for the same reason push buttons
+		// do: only a themed BUTTON sends NM_CUSTOMDRAW, and that is where
+		// the frame and its caption are drawn. Detached, the classic frame
+		// runs straight through the caption text.
+		const bool isGroupBox = (type == BS_GROUPBOX);
+		if (isPushButton || isGroupBox) {
 			return;
 		}
 	}

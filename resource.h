@@ -35,6 +35,11 @@
 #define IDC_REPEAT_SLIDER               1026
 #define IDC_DARKTHEME                   1027
 #define IDC_STATUS                      1028
+#define IDC_GRP_SETTINGS                1029
+#define IDC_GRP_FLAGS                   1030
+#define IDC_GRP_APPLIED                 1031
+#define IDC_GRP_LOAD                    1032
+#define IDC_GRP_TEST                    1033
 
 // Next default values for new objects
 // 
@@ -42,7 +47,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        129
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1029
+#define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
