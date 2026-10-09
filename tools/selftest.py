@@ -176,6 +176,18 @@ CASES = [
      "| T | Dark **t**heme |", "| Z | Dark theme |",
      "documents no accelerator for Alt+T"),
 
+    ("contrast ratio drifting from the colours", DOCS,
+     os.path.join("docs", "UI-UPGRADE.md"),
+     "| `#FFFFFF` | `#14263F` | 15.2:1 |",
+     "| `#FFFFFF` | `#14263F` | 12.2:1 |",
+     "it is 15.23:1"),
+
+    ("colour in the documentation that the code does not define", DOCS,
+     os.path.join("docs", "UI-UPGRADE.md"),
+     "| Surface (edit fields) | `#1D5188` | `COLOR_WINDOW` |",
+     "| Surface (edit fields) | `#1D5199` | `COLOR_WINDOW` |",
+     "which Theme.cpp does not define"),
+
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
      "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",

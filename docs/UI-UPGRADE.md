@@ -50,14 +50,33 @@ its 128 bands in two halves, and `PaintBackgroundSlice` lets a child control
 reproduce exactly the slice sitting behind it, so the stops line up across
 control boundaries.
 
-Contrast of white text against the three background stops is 8.9:1, 11.4:1 and
-15.2:1, and 8.1:1 on the input surface -- all past the 4.5:1 requirement.
-Secondary text `#E0E0E0` ranges from 6.7:1 to 11.5:1.
+Every text colour against every surface it can land on, as WCAG 2 contrast
+ratios. `tools/check-docs.py` recomputes this table from the hex values and
+fails if a number drifts, so it can be trusted rather than believed:
 
-Disabled text had to change with the palette. The old `#8CA4C4` sat on a very
-dark background (`#0A2342`, 5.5:1); against the new, lighter top band it would
-have dropped to **3.5:1**. `#A8BBD6` restores 4.5:1 at the top of the gradient
-and more further down.
+| Foreground | Background | Ratio |
+| --- | --- | --- |
+| `#FFFFFF` | `#2A4A7B` | 8.9:1 |
+| `#FFFFFF` | `#1F3A61` | 11.4:1 |
+| `#FFFFFF` | `#14263F` | 15.2:1 |
+| `#FFFFFF` | `#1D5188` | 8.1:1 |
+| `#FFFFFF` | `#3778B5` | 4.65:1 |
+| `#E0E0E0` | `#2A4A7B` | 6.7:1 |
+| `#E0E0E0` | `#14263F` | 11.5:1 |
+| `#A8BBD6` | `#2A4A7B` | 4.5:1 |
+| `#A8BBD6` | `#14263F` | 7.8:1 |
+
+The worst case is 4.5:1 and the requirement is 4.5:1, which is not a
+coincidence: it is what fixed the disabled colour. The old `#8CA4C4` was
+chosen against a much darker background and managed 6.2:1 there:
+
+| Foreground | Background | Ratio |
+| --- | --- | --- |
+| `#8CA4C4` | `#0A2342` | 6.2:1 |
+| `#8CA4C4` | `#2A4A7B` | 3.5:1 |
+
+Against the new, lighter top band the same colour drops to 3.5:1 -- below
+the requirement. `#A8BBD6` restores it.
 
 `#5D9CD6` and `#3778B5` are used for fills and outlines only, never for text.
 
@@ -338,7 +357,7 @@ now drawn by the dialog, through `NM_CUSTOMDRAW` rather than `BS_OWNERDRAW`:
 | State | Face | Notes |
 | --- | --- | --- |
 | Normal | `#1D5188` | white text, 8.1:1 |
-| Hover | `#3778B5` | white text, 4.7:1 |
+| Hover | `#3778B5` | white text, 4.65:1 |
 | Pressed | `#14263F` | plus the usual one pixel text nudge |
 | Disabled | `#1F3A61` | `#A8BBD6` text |
 
@@ -517,6 +536,25 @@ Expected output: `3 file(s), 0 problem(s)`. The self test covers both
 directions: dropping a real check is caught, and so is removing the `(void)`
 marker.
 
+## Colours the documentation claims
+
+Two numbers in this file were wrong, and nothing would have noticed.
+`check-docs.py` now recomputes them:
+
+- Every `#RRGGBB` quoted anywhere in the documentation has to be a colour
+  `Theme.cpp` defines. Two exceptions are listed by name in the checker --
+  `#8CA4C4` and `#0A2342`, the rejected disabled colour and the old
+  background it was picked against, which exist only as history.
+- Every table row shaped *foreground | background | N:1* is recomputed with
+  the WCAG 2 formula and compared at the precision the row chose, so
+  `4.65:1` and `4.7:1` are judged differently and both can be right.
+
+The two faults it found on arrival: the old disabled colour was documented
+at `5.5:1` against `#0A2342` when it is 6.2:1, and the hover background was
+written as `4.7:1` when white on `#3778B5` rounds to 4.65:1 -- the only
+pair in the whole palette anywhere near the 4.5:1 line, which is precisely
+the number that should not drift.
+
 ## Styles and wrappers that do not belong together
 
 Two mistakes the compiler is perfectly happy with:
@@ -543,7 +581,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **42 mutations**.
+Both are covered by the self test, which now runs **44 mutations**.
 
 ## Handler signatures
 
@@ -727,7 +765,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **42 mutations** one at a time --
+clean on the untouched copy, then applies **44 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -738,7 +776,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `42 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `44 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -871,4 +909,4 @@ python tools\selftest.py
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`42 case(s), 0 failure(s)`. Anything else is a regression.
+`44 case(s), 0 failure(s)`. Anything else is a regression.

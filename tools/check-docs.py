@@ -16,6 +16,9 @@ file and verifies:
     into this repository rather than a build output or an example
   * the accelerator table in docs/UI-UPGRADE.md lists exactly the letters
     the resource script actually marks with an ampersand
+  * every contrast ratio documented as "foreground | background | N:1" is
+    what WCAG 2 actually gives for those two colours
+  * every colour quoted in the documentation is one the code defines
 
 It deliberately does not touch external URLs: no network here, and a web
 page that moved is not this repository's fault.
@@ -136,6 +139,80 @@ def check_backticked_paths(root, path, text):
     return problems
 
 
+HEX = re.compile(r"#([0-9A-Fa-f]{6})\b")
+
+# Colours that appear in the documentation on purpose without being in the
+# current palette: the rejected disabled colour and the background it was
+# chosen against.
+HISTORICAL_COLOURS = {"8CA4C4", "0A2342"}
+
+
+def _channel(value):
+    value /= 255.0
+    return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+
+def luminance(hex_colour):
+    red, green, blue = (int(hex_colour[i:i + 2], 16) for i in (0, 2, 4))
+    return (0.2126 * _channel(red) + 0.7152 * _channel(green)
+            + 0.0722 * _channel(blue))
+
+
+def contrast(first, second):
+    """WCAG 2 contrast ratio between two #RRGGBB colours."""
+    light, dark = luminance(first), luminance(second)
+    if light < dark:
+        light, dark = dark, light
+    return (light + 0.05) / (dark + 0.05)
+
+
+def palette_colours(root):
+    """Hex colours the code defines, from the RGB() triples in Theme.cpp."""
+    path = os.path.join(root, "Theme.cpp")
+    if not os.path.exists(path):
+        return None
+    found = {"FFFFFF", "000000"}
+    for match in re.finditer(r"RGB\(\s*0x([0-9A-Fa-f]{2})\s*,\s*0x([0-9A-Fa-f]{2})"
+                             r"\s*,\s*0x([0-9A-Fa-f]{2})\s*\)", read(path)):
+        found.add("".join(part.upper() for part in match.groups()))
+    return found
+
+
+def check_colours(root, documents):
+    """Quoted colours must exist in Theme.cpp; quoted ratios must be right."""
+    problems = []
+    palette = palette_colours(root)
+
+    for path, text in documents.items():
+        if palette is not None:
+            for match in HEX.finditer(text):
+                colour = match.group(1).upper()
+                if colour not in palette and colour not in HISTORICAL_COLOURS:
+                    problems.append("%s mentions the colour #%s, which "
+                                    "Theme.cpp does not define"
+                                    % (path, colour))
+
+        # Rows of the shape: | `#FFFFFF` | `#1F3A61` | 11.4:1 |
+        for row in re.findall(r"(?m)^\|(.+)\|\s*$", text):
+            cells = [cell.strip().strip("`") for cell in row.split("|")]
+            colours = [c.lstrip("#").upper() for c in cells
+                       if HEX.fullmatch(c if c.startswith("#") else "#" + c)]
+            claims = [c for c in cells if re.fullmatch(r"\d+(?:\.\d+)?:1", c)]
+            if len(colours) != 2 or len(claims) != 1:
+                continue
+            text_value = claims[0].split(":")[0]
+            claimed = float(text_value)
+            # Compare at the precision the document chose, so 4.7:1 is a
+            # correct way to write 4.6497 and 4.65:1 is as well.
+            digits = len(text_value.split(".")[1]) if "." in text_value else 0
+            actual = contrast(colours[0], colours[1])
+            if round(actual, digits) != claimed:
+                problems.append("%s claims #%s on #%s is %s, it is %.2f:1"
+                                % (path, colours[0], colours[1],
+                                   claims[0], actual))
+    return problems
+
+
 ACCELERATOR_HEADING = "## Keyboard accelerators"
 
 
@@ -222,6 +299,7 @@ def main():
         problems += check_backticked_paths(root, path, text)
     problems += check_tools_documented(root, documents)
     problems += check_accelerator_table(root, documents)
+    problems += check_colours(root, documents)
 
     for problem in problems:
         print("  ! %s" % problem)
