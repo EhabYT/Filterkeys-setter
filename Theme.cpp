@@ -271,7 +271,13 @@ void CTheme::ApplyToControl(HWND hWndControl) const
 		// the frame and its caption are drawn. Detached, the classic frame
 		// runs straight through the caption text.
 		const bool isGroupBox = (type == BS_GROUPBOX);
-		if (isPushButton || isGroupBox) {
+		// Check boxes and radio buttons are drawn by the dialog as well,
+		// for the same reason: detached they fall back to the classic
+		// white box with a black tick.
+		const bool isCheck = (type == BS_CHECKBOX || type == BS_AUTOCHECKBOX
+		                   || type == BS_3STATE || type == BS_AUTO3STATE);
+		const bool isRadio = (type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON);
+		if (isPushButton || isGroupBox || isCheck || isRadio) {
 			return;
 		}
 	}

@@ -565,6 +565,25 @@ text colour. The five group boxes needed real control IDs for that --
 `IDC_GRP_SETTINGS` and friends, replacing `IDC_STATIC`, which is `-1` for
 all of them and cannot be addressed by `ON_NOTIFY`.
 
+**White check boxes and radio buttons.** Not a fault exactly, but the same
+cause and clearly visible in the screenshot: detached from the style, a
+check box falls back to the classic white square with a black tick, and a
+radio button to a white circle. Against `#1F3A61` they are the brightest
+thing on the dialog. They now keep the style and are drawn by
+`PaintThemedCheckBox`: surface-coloured indicator, accent border, a tick
+drawn as two strokes, a filled dot for radios, the accent border on hover
+and focus, and the caption in the theme's text colour with the same
+`UISF_HIDEACCEL` rule the push buttons use. Captions that wrap, such as
+the two radio buttons, are measured with `DT_CALCRECT` first and only
+centred vertically when they fit on one line.
+
+That makes four of the five control kinds in this dialog custom drawn in
+dark mode -- push buttons, trackbars, group boxes, check boxes and radio
+buttons -- with statics and edits handled through `WM_CTLCOLOR*`.
+`tools/render-dialog.py` already drew the intended look; the gap was in
+the program, and the preview images are unchanged by these fixes, which is
+the point.
+
 Worth noting what this says about the checkers: they verified that the
 handler existed, was declared, was mapped, had the right signature and
 addressed a control that exists. All of that was true while the dialog

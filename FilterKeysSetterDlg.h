@@ -41,6 +41,7 @@ protected:
 	// Slider <-> edit box synchronisation
 	void InitSliders();
 	void InitToolTips();
+	CRect BackgroundBehind(HWND hWndChild);
 	void SyncSliderFromEdit(CSliderCtrl& slider, CEdit& edit);
 	void SyncEditFromSlider(CSliderCtrl& slider, CEdit& edit);
 
@@ -74,6 +75,7 @@ protected:
 	afx_msg void OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnCustomDrawButton(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnCustomDrawGroupBox(NMHDR* pNMHDR, LRESULT* pResult);
+	afx_msg void OnCustomDrawCheckBox(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnSettingChange(UINT uFlags, LPCTSTR lpszSection);
 
 	DECLARE_MESSAGE_MAP()

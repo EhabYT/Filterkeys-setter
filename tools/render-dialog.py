@@ -228,7 +228,10 @@ class Canvas:
 
     def groupbox(self, rect, caption):
         x0, y0, x1, y1 = self.box(rect)
-        pen = self.pal["accent"] if self.pal is DARK else self.pal["disabled"]
+        # The program draws the frame in the muted accent (see
+        # PaintThemedGroupBox); the preview has to use the same colour or it
+        # flatters the implementation.
+        pen = self.pal["accent_muted"] if self.pal is DARK else self.pal["disabled"]
         self.d.rectangle([x0, y0 + self.px(4), x1, y1], outline=pen,
                          width=max(1, self.k // 2))
         if caption:

@@ -16,6 +16,132 @@ namespace
 	// Paints a push button in the dark palette. Lives here rather than in
 	// either dialog so the About box cannot drift away from the main window.
 	// Returns false when the caller should let the system draw the button.
+	// Check boxes and radio buttons detached from the visual style fall back
+	// to the classic look: a white box with a black tick, which is exactly
+	// what a dark dialog should not contain. They keep the style so that
+	// NM_CUSTOMDRAW arrives, and are drawn here instead.
+	bool PaintThemedCheckBox(const CTheme& theme, LPNMCUSTOMDRAW pcd,
+	                         const CRect& rcBehind)
+	{
+		if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
+			return false;
+		}
+
+		CDC* pDC = CDC::FromHandle(pcd->hdc);
+		CWnd* pBox = CWnd::FromHandle(pcd->hdr.hwndFrom);
+		if (pDC == NULL || pBox == NULL) {
+			return false;
+		}
+
+		const ThemePalette& pal = theme.Palette();
+		const LONG style = ::GetWindowLong(pcd->hdr.hwndFrom, GWL_STYLE);
+		const LONG type = style & BS_TYPEMASK;
+		const bool isRadio = (type == BS_RADIOBUTTON || type == BS_AUTORADIOBUTTON);
+
+		const bool enabled = (pcd->uItemState & CDIS_DISABLED) == 0;
+		const bool focused = (pcd->uItemState & CDIS_FOCUS) != 0;
+		const bool hot     = (pcd->uItemState & CDIS_HOT) != 0;
+		const bool checked = (pBox->SendMessage(BM_GETCHECK) == BST_CHECKED);
+
+		CRect rc(pcd->rc);
+		theme.PaintBackgroundSlice(*pDC, rcBehind, rc);
+
+		// A 13x13 pixel indicator is what Windows uses at 96 dpi; scale it
+		// with the control height so it keeps up with higher dpi.
+		int side = ::MulDiv(13, rc.Height(), 17);
+		if (side < 9) side = 9;
+		if (side > rc.Height()) side = rc.Height();
+
+		CRect rcBox(rc.left, rc.top + (rc.Height() - side) / 2,
+		            rc.left + side, rc.top + (rc.Height() - side) / 2 + side);
+
+		const COLORREF clrFace   = hot ? pal.clrAccentMuted : pal.clrSurface;
+		const COLORREF clrBorder = (focused || hot) ? pal.clrAccent : pal.clrAccentMuted;
+		const COLORREF clrMark   = enabled ? pal.clrText : pal.clrTextDisabled;
+
+		if (isRadio) {
+			CBrush brFace;
+			CPen penBorder;
+			if (brFace.CreateSolidBrush(clrFace) && penBorder.CreatePen(PS_SOLID, 1, clrBorder)) {
+				CBrush* pOldBrush = pDC->SelectObject(&brFace);
+				CPen* pOldPen = pDC->SelectObject(&penBorder);
+				pDC->Ellipse(rcBox);
+				if (checked) {
+					CRect rcDot(rcBox);
+					rcDot.DeflateRect(side / 4, side / 4);
+					CBrush brMark;
+					if (brMark.CreateSolidBrush(clrMark)) {
+						CBrush* pPrev = pDC->SelectObject(&brMark);
+						pDC->Ellipse(rcDot);
+						pDC->SelectObject(pPrev);
+					}
+				}
+				pDC->SelectObject(pOldPen);
+				pDC->SelectObject(pOldBrush);
+			}
+		}
+		else {
+			pDC->FillSolidRect(rcBox, clrFace);
+			pDC->Draw3dRect(rcBox, clrBorder, clrBorder);
+			if (checked) {
+				CPen penMark;
+				if (penMark.CreatePen(PS_SOLID, max(1, side / 7), clrMark)) {
+					CPen* pOldPen = pDC->SelectObject(&penMark);
+					// A tick, not a cross: down to the low point, up again.
+					pDC->MoveTo(rcBox.left + side / 4, rcBox.top + side / 2);
+					pDC->LineTo(rcBox.left + side / 2 - 1, rcBox.bottom - side / 4 - 1);
+					pDC->LineTo(rcBox.right - side / 5, rcBox.top + side / 5);
+					pDC->SelectObject(pOldPen);
+				}
+			}
+		}
+
+		CString strText;
+		pBox->GetWindowText(strText);
+
+		const int oldMode = pDC->SetBkMode(TRANSPARENT);
+		const COLORREF oldText = pDC->SetTextColor(enabled ? pal.clrText
+		                                                   : pal.clrTextDisabled);
+		CFont* pFont = pBox->GetFont();
+		CFont* pOldFont = (pFont != NULL) ? pDC->SelectObject(pFont) : NULL;
+
+		CRect rcText(rc);
+		rcText.left = rcBox.right + ::MulDiv(5, rc.Height(), 17);
+
+		// Same UI state rule as the push buttons: no underline until the
+		// user has asked for one with Alt or the keyboard.
+		UINT format = DT_LEFT | DT_WORDBREAK;
+		const LRESULT uiState = ::SendMessage(pcd->hdr.hwndFrom,
+			WM_QUERYUISTATE, 0, 0);
+		if ((uiState & UISF_HIDEACCEL) != 0) {
+			format |= DT_HIDEPREFIX;
+		}
+
+		// Single-line captions are centred; wrapped ones start at the top,
+		// which is what the resource layout expects.
+		CRect rcMeasure(rcText);
+		pDC->DrawText(strText, rcMeasure, format | DT_CALCRECT);
+		if (rcMeasure.Height() <= rc.Height()) {
+			format |= DT_VCENTER | DT_SINGLELINE;
+			format &= ~DT_WORDBREAK;
+		}
+		pDC->DrawText(strText, rcText, format);
+
+		if (focused) {
+			CRect rcFocus(rcText);
+			rcFocus.right = min(rcText.left + rcMeasure.Width() + 2, rc.right);
+			rcFocus.bottom = min(rcText.top + rcMeasure.Height(), rc.bottom);
+			pDC->DrawFocusRect(rcFocus);
+		}
+
+		if (pOldFont != NULL) {
+			pDC->SelectObject(pOldFont);
+		}
+		pDC->SetTextColor(oldText);
+		pDC->SetBkMode(oldMode);
+		return true;
+	}
+
 	// A classic (unthemed) group box draws its frame straight across the
 	// caption, which is what put a line through "Load settings" and
 	// "Test area". Drawing it here keeps the caption legible and lets the
@@ -367,6 +493,20 @@ BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_NORMAL, OnCustomDrawButton)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_DEFAULTS, OnCustomDrawButton)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SET_ORIGINAL, OnCustomDrawButton)
+	// Check boxes and radio buttons: classic ones are a white box with a
+	// black tick, which does not belong in a dark dialog.
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_ON, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_AVAILABLE, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_INDICATOR, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_CLICK, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_HOTKEYACTIVE, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_CONFIRMHOTKEY, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_HOTKEYSOUND, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_UPDATEINIFILE, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_SENDCHANGE, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_DARKTHEME, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_IGNORE_QUICK, OnCustomDrawCheckBox)
+	ON_NOTIFY(NM_CUSTOMDRAW, IDC_IGNORE_REPEATED, OnCustomDrawCheckBox)
 	// Group boxes are drawn here too; the classic frame crosses its caption.
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_SETTINGS, OnCustomDrawGroupBox)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_FLAGS, OnCustomDrawGroupBox)
@@ -714,6 +854,39 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 }
 
+// The slice of the dialog gradient sitting behind a child control, in that
+// control's own coordinates.
+CRect CFilterKeysSetterDlg::BackgroundBehind(HWND hWndChild)
+{
+	CRect rcClient;
+	GetClientRect(&rcClient);
+
+	CWnd* pChild = CWnd::FromHandle(hWndChild);
+	if (pChild == NULL) {
+		return rcClient;
+	}
+
+	CRect rcChild;
+	pChild->GetWindowRect(&rcChild);
+	ScreenToClient(&rcChild);
+
+	CRect behind(rcClient);
+	behind.OffsetRect(-rcChild.left, -rcChild.top);
+	return behind;
+}
+
+void CFilterKeysSetterDlg::OnCustomDrawCheckBox(NMHDR* pNMHDR, LRESULT* pResult)
+{
+	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
+	*pResult = CDRF_DODEFAULT;
+	if (pcd == NULL) {
+		return;
+	}
+	if (PaintThemedCheckBox(m_theme, pcd, BackgroundBehind(pcd->hdr.hwndFrom))) {
+		*pResult = CDRF_SKIPDEFAULT;
+	}
+}
+
 void CFilterKeysSetterDlg::OnCustomDrawGroupBox(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
@@ -722,23 +895,7 @@ void CFilterKeysSetterDlg::OnCustomDrawGroupBox(NMHDR* pNMHDR, LRESULT* pResult)
 		return;
 	}
 
-	// The slice of the dialog gradient sitting behind this group box, in
-	// the group box's own coordinates.
-	CRect rcClient;
-	GetClientRect(&rcClient);
-
-	CRect rcBox;
-	CWnd* pBox = CWnd::FromHandle(pcd->hdr.hwndFrom);
-	if (pBox == NULL) {
-		return;
-	}
-	pBox->GetWindowRect(&rcBox);
-	ScreenToClient(&rcBox);
-
-	CRect behind(rcClient);
-	behind.OffsetRect(-rcBox.left, -rcBox.top);
-
-	if (PaintThemedGroupBox(m_theme, pcd, behind)) {
+	if (PaintThemedGroupBox(m_theme, pcd, BackgroundBehind(pcd->hdr.hwndFrom))) {
 		*pResult = CDRF_SKIPDEFAULT;
 	}
 }
