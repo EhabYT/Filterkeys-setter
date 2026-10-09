@@ -423,6 +423,10 @@ Notes on the choices:
   z-order, which is exactly what the dialog manager needs — a static
   accelerator hands the focus to the *next* control, so Alt+D lands in the
   delay field.
+- `tools/check-docs.py` compares this very table against the `&` markers in
+  the resource script, in both directions: a letter added to a caption but
+  not to the table, and a row left behind after a caption changed, are both
+  reported. The table is the kind of thing that rots within two commits.
 - `tools/check-dialog-layout.py` now fails when two controls in the same
   dialog claim the same letter, and ignores `&` when it estimates caption
   widths. `tools/render-dialog.py` strips the `&` and underlines the marked
@@ -539,7 +543,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **41 mutations**.
+Both are covered by the self test, which now runs **42 mutations**.
 
 ## Handler signatures
 
@@ -723,7 +727,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **41 mutations** one at a time --
+clean on the untouched copy, then applies **42 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -734,7 +738,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `41 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `42 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -867,4 +871,4 @@ python tools\selftest.py
 The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
 a single note about `CWinApp::OnHelp`, `33 symbol(s), 0 problem(s)`,
 `3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`41 case(s), 0 failure(s)`. Anything else is a regression.
+`42 case(s), 0 failure(s)`. Anything else is a regression.

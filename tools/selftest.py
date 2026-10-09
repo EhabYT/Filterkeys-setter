@@ -171,6 +171,11 @@ CASES = [
      "`tools/render-dialog.py`", "`tools/draw-dialog.py`",
      "which does not exist"),
 
+    ("accelerator table out of step with the resource", DOCS,
+     os.path.join("docs", "UI-UPGRADE.md"),
+     "| T | Dark **t**heme |", "| Z | Dark theme |",
+     "documents no accelerator for Alt+T"),
+
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
      "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",

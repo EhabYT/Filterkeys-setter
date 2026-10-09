@@ -14,6 +14,8 @@ file and verifies:
     somewhere, so a new tool cannot stay undocumented
   * file paths written in `backticks` exist, when they look like a path
     into this repository rather than a build output or an example
+  * the accelerator table in docs/UI-UPGRADE.md lists exactly the letters
+    the resource script actually marks with an ampersand
 
 It deliberately does not touch external URLs: no network here, and a web
 page that moved is not this repository's fault.
@@ -134,6 +136,61 @@ def check_backticked_paths(root, path, text):
     return problems
 
 
+ACCELERATOR_HEADING = "## Keyboard accelerators"
+
+
+def resource_accelerators(root):
+    """Letters marked with & in the dialog captions of the .rc."""
+    path = os.path.join(root, "FilterKeysSetter.rc")
+    if not os.path.exists(path):
+        return None
+    text = re.sub(r"//[^\n]*", "", read(path))
+    letters = set()
+    for dialog in re.finditer(r"\w+\s+DIALOGEX.*?\nBEGIN\n(.*?)\nEND",
+                              text, re.S):
+        body = re.sub(r",\s*\n\s+", ", ", dialog.group(1))
+        for line in body.splitlines():
+            caption = re.match(r'\w+\s+"([^"]*)"', line.strip())
+            if not caption:
+                continue
+            marked = re.search(r"&(\w)", caption.group(1).replace("&&", ""))
+            if marked:
+                letters.add(marked.group(1).upper())
+    return letters
+
+
+def check_accelerator_table(root, documents):
+    """The documented accelerators have to be the ones in the resource."""
+    problems = []
+    letters = resource_accelerators(root)
+    if letters is None:
+        return problems
+    for path, text in documents.items():
+        if ACCELERATOR_HEADING not in text:
+            continue
+        section = text.split(ACCELERATOR_HEADING, 1)[1]
+        section = re.split(r"(?m)^## ", section)[0]
+        documented = set()
+        for row in re.findall(r"(?m)^\|(.+)\|\s*$", section):
+            for cell in row.split("|"):
+                cell = cell.strip()
+                if len(cell) == 1 and cell.isalpha():
+                    documented.add(cell.upper())
+        if not documented:
+            continue
+        missing = sorted(letters - documented)
+        extra = sorted(documented - letters)
+        if missing:
+            problems.append("%s documents no accelerator for Alt+%s, which "
+                            "the resource script defines"
+                            % (path, ", Alt+".join(missing)))
+        if extra:
+            problems.append("%s documents Alt+%s, which no control in the "
+                            "resource script claims"
+                            % (path, ", Alt+".join(extra)))
+    return problems
+
+
 def check_tools_documented(root, documents):
     """Every tool has to be named somewhere, or nobody will ever run it."""
     problems = []
@@ -164,6 +221,7 @@ def main():
         problems += check_links(root, path, text, cache)
         problems += check_backticked_paths(root, path, text)
     problems += check_tools_documented(root, documents)
+    problems += check_accelerator_table(root, documents)
 
     for problem in problems:
         print("  ! %s" % problem)
