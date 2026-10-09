@@ -40,10 +40,14 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
   platforms, copies them to `release\`, prints sizes and SHA-256 sums and,
   given a tag, uploads them. The procedure is in
   [docs/RELEASE.md](docs/RELEASE.md).
-- Five static checkers run on any machine with Python -- dialog layout,
-  message maps, resources, error handling and project files -- and
-  `tools\selftest.py` verifies them by breaking the repository in 32 ways
-  and insisting each break is caught.
+- Six static checkers run on any machine with Python -- dialog layout,
+  message maps, resources, error handling, project files and the
+  documentation itself. `tools\check-all.py` runs the lot with one verdict,
+  and `tools\selftest.py` verifies them by breaking the repository in 39
+  ways and insisting each break is caught.
+- [docs/MFC.md](docs/MFC.md) covers `MSB8041`, the missing-MFC error that
+  stops most first builds, and [docs/TESTING.md](docs/TESTING.md) is the
+  manual pass the checkers cannot perform.
 
 ### Building it yourself
 

@@ -657,7 +657,7 @@ External URLs are left alone: there is no network here, and a page that
 moved is not this repository's fault. The anchor rule follows GitHub's
 slug algorithm -- lowercase, punctuation dropped, spaces to hyphens.
 
-Expected output: `6 document(s), 0 problem(s)`.
+Expected output: `8 document(s), 0 problem(s)`.
 
 ## Running them all at once
 
