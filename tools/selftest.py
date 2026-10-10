@@ -106,6 +106,16 @@ CASES = [
      'IDC_STATUS,6,240,216,12,SS_CENTERIMAGE | SS_ENDELLIPSIS',
      "the static has no"),
 
+    ("custom drawn control detached from the visual style", MAP, "Theme.cpp",
+     "if (isPushButton || isGroupBox || isCheck || isRadio) {",
+     "if (isPushButton || isCheck || isRadio) {",
+     "which stops NM_CUSTOMDRAW"),
+
+    ("custom draw asked of a control class that cannot send it", MAP, DLG,
+     "ON_NOTIFY(NM_CUSTOMDRAW, IDC_DELAY_SLIDER, OnCustomDrawSlider)",
+     "ON_NOTIFY(NM_CUSTOMDRAW, IDC_TEST_EDIT, OnCustomDrawSlider)",
+     "detaches Edit controls"),
+
     # -- check-project.py -------------------------------------------------
     ("project references a file that is gone", PROJECT, VCXPROJ,
      '<ClInclude Include="Theme.h" />',

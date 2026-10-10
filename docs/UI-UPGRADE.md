@@ -663,7 +663,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **44 mutations**.
+Both are covered by the self test, which now runs **46 mutations**.
 
 ## Handler signatures
 
@@ -685,6 +685,34 @@ void(NMHDR*, LRESULT*), but it is void(NMHDR*)
 Parameter names are stripped, `CDC *pDC` and `CDC* pDC` compare equal, and
 `LPNMHDR` counts as `NMHDR*`. Macros that are not in the table are reported
 as unchecked rather than treated as correct.
+
+## The rule that would have caught all of this
+
+Three rounds in a row broke the same way: a control was detached from the
+visual style in `CTheme::ApplyToControl`, and a painter in
+`FilterKeysSetterDlg.cpp` was written for it. A detached control sends no
+`NM_CUSTOMDRAW`, so the handler never ran and Windows drew the classic
+look. Every checker was clean the whole time, because each one looked at
+one file.
+
+`check-message-map.py` now reads both sides. It takes the window classes
+`ApplyToControl` detaches, takes the button types the early `return`
+leaves alone, resolves each `ON_NOTIFY(NM_CUSTOMDRAW, ...)` control back
+to its class through the resource script, and complains when the two
+disagree:
+
+```
+IDC_GRP_SETTINGS is custom drawn, but Theme.cpp detaches Button controls
+from the visual style, which stops NM_CUSTOMDRAW
+```
+
+The parsing detail that matters: the exempt types are read from the
+condition that returns, not from every `BS_` constant in the function. A
+first attempt collected them from the whole body, which meant that
+deleting a flag from the condition -- exactly the bug -- left the checker
+happy because the now-pointless declaration still mentioned the constant.
+Both halves are in the self test: one mutation drops `isGroupBox` from the
+condition, the other points a custom-draw entry at an edit control.
 
 ## MSB8041, the error everyone hits first
 
@@ -847,7 +875,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **44 mutations** one at a time --
+clean on the untouched copy, then applies **46 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -858,16 +886,20 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `44 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `46 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
 
-**Check boxes, radio buttons and group boxes look flat in the dark theme.**
-They have to be detached from the visual style with
-`SetWindowTheme(hwnd, L"", L"")`, because the theme engine paints its own text
-in black and ignores `WM_CTLCOLORSTATIC` entirely. Classic rendering is the
-price of readable labels.
+**Everything in the dark theme is drawn by hand.** This entry used to say
+that check boxes, radio buttons and group boxes look flat because they are
+detached from the visual style. That is no longer how it works: they stay
+with the style and are painted by `PaintThemedCheckBox` and
+`PaintThemedGroupBox` through `NM_CUSTOMDRAW`, which is why they can be
+dark and readable at the same time. The trade-off that remains is the
+maintenance one -- five painters in `FilterKeysSetterDlg.cpp` reproduce
+behaviour the theme engine would have given for free, and they only cover
+the states this dialog actually reaches.
 
 **System DPI, not per-monitor.** Per-monitor v2 requires handling
 `WM_DPICHANGED` and rebuilding fonts and layout at runtime, which this dialog
@@ -981,14 +1013,12 @@ permission. Until it lands, none of the above has been compiled in CI, and
 the checks only run when someone runs them by hand:
 
 ```
-python tools\check-dialog-layout.py
-python tools\check-message-map.py
-python tools\check-resources.py
-python tools\check-error-handling.py
-python tools\selftest.py
+python tools\check-all.py
 ```
 
-The expected output is six clean runs: two `ok` lines, `0 problem(s)` with
-a single note about `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`,
-`3 file(s), 0 problem(s)`, `15 reference(s), 0 problem(s)` and
-`44 case(s), 0 failure(s)`. Anything else is a regression.
+That runs all seven. The expected output is two `ok` lines from
+`check-dialog-layout.py`, `0 problem(s)` with a single note about
+`CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`, `3 file(s), 0 problem(s)`,
+`15 reference(s), 0 problem(s)` with three notes, `8 document(s),
+0 problem(s)`, `46 case(s), 0 failure(s)` and the closing line
+`all 7 checks passed`. Anything else is a regression.

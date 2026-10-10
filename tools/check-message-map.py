@@ -299,6 +299,89 @@ def check_ddx_types(text, controls, types, rel):
     return problems
 
 
+# ApplyToControl() in Theme.cpp detaches whole window classes from the visual
+# style. A detached control sends no NM_CUSTOMDRAW, so a control that is both
+# detached and custom drawn is simply never painted by its handler.
+THEME_SOURCE = "Theme.cpp"
+
+# Resource statement -> (window class, button type) as the dialog manager
+# creates it.
+STATEMENT_KINDS = {
+    "PUSHBUTTON": ("Button", "BS_PUSHBUTTON"),
+    "DEFPUSHBUTTON": ("Button", "BS_DEFPUSHBUTTON"),
+    "GROUPBOX": ("Button", "BS_GROUPBOX"),
+    "EDITTEXT": ("Edit", None),
+    "LTEXT": ("Static", None),
+    "RTEXT": ("Static", None),
+    "CTEXT": ("Static", None),
+    "ICON": ("Static", None),
+}
+
+
+def apply_to_control(theme_path):
+    """(classes ApplyToControl detaches, button types it leaves alone)."""
+    text = strip_comments(read(theme_path))
+    body = re.search(r"void\s+CTheme::ApplyToControl\s*\([^)]*\)[^{]*\{(.*?)\n\}",
+                     text, flags=re.S)
+    if not body:
+        return None, None
+    code = body.group(1)
+    classes = set(re.findall(r'_tcsicmp\s*\(\s*szClass\s*,\s*_T\("(\w+)"\)', code))
+
+    # The button types that survive are the ones named in the condition that
+    # returns early, not every BS_ constant mentioned in the function: a flag
+    # computed and then dropped from that condition exempts nothing.
+    exempt = set()
+    for guard in re.finditer(r"if\s*\(([^)]*(?:\([^)]*\)[^)]*)*)\)\s*\{\s*return\s*;", code):
+        for flag in set(re.findall(r"\b(\w+)\b", guard.group(1))):
+            if flag.startswith("BS_"):
+                exempt.add(flag)
+                continue
+            decl = re.search(r"\b%s\s*=\s*([^;]*);" % re.escape(flag), code)
+            if decl:
+                exempt |= set(re.findall(r"\bBS_[A-Z0-9]+\b", decl.group(1)))
+    exempt.discard("BS_TYPEMASK")
+    return classes, exempt
+
+
+def control_kind(kind, line):
+    """(window class, set of button type styles) for one resource line."""
+    if kind in STATEMENT_KINDS:
+        cls, style = STATEMENT_KINDS[kind]
+        return cls, set([style]) if style else set()
+    if kind == "CONTROL":
+        cls = re.search(r'"[^"]*"\s*,\s*[\w()+ -]+,\s*"([^"]+)"', line)
+        return (cls.group(1) if cls else None), set(re.findall(r"\bBS_[A-Z0-9]+\b", line))
+    return None, set()
+
+
+def check_customdraw(text, controls, rel):
+    """NM_CUSTOMDRAW on a control that ApplyToControl detaches from the style."""
+    theme_path = os.path.join(ROOT, THEME_SOURCE)
+    if not os.path.isfile(theme_path):
+        return []
+    detached, exempt = apply_to_control(theme_path)
+    if detached is None:
+        return ["%s: no CTheme::ApplyToControl found, cannot check custom draw"
+                % THEME_SOURCE]
+
+    problems = []
+    for match in re.finditer(r"ON_NOTIFY\s*\(\s*NM_CUSTOMDRAW\s*,\s*(\w+)", text):
+        control = match.group(1)
+        if control not in controls:
+            continue
+        kind, line = controls[control]
+        cls, styles = control_kind(kind, line)
+        if cls is None or not any(c.lower() == cls.lower() for c in detached):
+            continue
+        if cls.lower() == "button" and styles & exempt:
+            continue
+        problems.append("%s: %s is custom drawn, but %s detaches %s controls "
+                        "from the visual style, which stops NM_CUSTOMDRAW"
+                        % (rel, control, THEME_SOURCE, cls))
+    return problems
+
+
 def dialog_controls(rc_path):
     """control ID -> (kind, full resource line), across every dialog."""
     text = strip_comments(read(rc_path))
@@ -340,6 +423,7 @@ def check_wiring(sources, rc_path):
         rel = os.path.relpath(path, ROOT)
 
         problems += check_ddx_types(text, controls, types, rel)
+        problems += check_customdraw(text, controls, rel)
 
         referenced = set()
         referenced |= ddx_ids(text)
