@@ -1,0 +1,86 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main", "arena/**" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static-checks:
+    # Cheap static checks of the resource script and the message maps; they
+    # run before the real build so a clipped caption, an overlapping control
+    # or a handler that no longer matches its map is reported in seconds.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Check the dialog layout
+        run: python tools/check-dialog-layout.py
+
+      - name: Check the message maps
+        run: python tools/check-message-map.py
+
+      - name: Resource and version check
+        run: python tools/check-resources.py
+
+      - name: Error handling check
+        run: python tools/check-error-handling.py
+
+      - name: Documentation check
+        run: python tools/check-docs.py
+
+      - name: Checker self test
+        run: python tools/selftest.py
+
+  build:
+    # The project is built, not the solution: the solution calls the 32-bit
+    # platform x86 and would reject /p:Platform=Win32 with MSB4126, and the
+    # setup project in it is not part of any solution build anyway.
+    # Built twice on purpose:
+    #   windows-2022 -> Visual Studio 2022, platform toolset v143
+    #   windows-2025 -> Visual Studio 2026, platform toolset v145 (no v143 there)
+    # The project does not hard-code a toolset, so both resolve on their own.
+    runs-on: ${{ matrix.runner }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [windows-2022, windows-2025]
+        platform: [Win32, x64]
+        configuration: [Release]
+
+    name: ${{ matrix.runner }} ${{ matrix.platform }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Add MSBuild to PATH
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Build ${{ matrix.configuration }} ${{ matrix.platform }}
+        run: >
+          msbuild FilterKeysSetter.vcxproj
+          /m
+          /p:Configuration=${{ matrix.configuration }}
+          /p:Platform=${{ matrix.platform }}
+          /p:OutDir=${{ github.workspace }}\artifacts\${{ matrix.platform }}\
+          /verbosity:minimal
+
+      - name: Upload executable
+        uses: actions/upload-artifact@v4
+        with:
+          name: FilterKeysSetter-${{ matrix.platform }}-${{ matrix.runner }}
+          path: artifacts/${{ matrix.platform }}/FilterKeysSetter.exe
+          if-no-files-found: error

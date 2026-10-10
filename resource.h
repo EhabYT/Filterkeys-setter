@@ -1,4 +1,4 @@
-//{{NO_DEPENDENCIES}}
+﻿//{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.
 // Used by FilterKeysSetter.rc
 //
@@ -28,11 +28,18 @@
 #define IDC_SET_CURRENT                 1018
 #define IDC_SET_REGISTRY                1019
 #define IDC_CHARS_PER_SEC               1020
-#define IDC_BUTTON5                     1021
 #define IDC_APPLY                       1021
-#define IDC_EDIT1                       1023
-#define IDC_BUTTON1                     1024
+#define IDC_TEST_EDIT                   1023
 #define IDC_SET_ORIGINAL                1024
+#define IDC_DELAY_SLIDER                1025
+#define IDC_REPEAT_SLIDER               1026
+#define IDC_DARKTHEME                   1027
+#define IDC_STATUS                      1028
+#define IDC_GRP_SETTINGS                1029
+#define IDC_GRP_FLAGS                   1030
+#define IDC_GRP_APPLIED                 1031
+#define IDC_GRP_LOAD                    1032
+#define IDC_GRP_TEST                    1033
 
 // Next default values for new objects
 // 
@@ -40,7 +47,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        129
 #define _APS_NEXT_COMMAND_VALUE         32771
-#define _APS_NEXT_CONTROL_VALUE         1025
+#define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
