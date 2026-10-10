@@ -35,6 +35,13 @@ icon: a navy background that deepens from `#2A4A7B` through `#1F3A61` to
 light look; the choice is remembered in
 `HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme`.
 
+In the dark theme the dialog paints itself rather than leaving it to
+Windows: push buttons, sliders, group boxes, check boxes and radio buttons
+are drawn through `NM_CUSTOMDRAW`, the edit fields and labels through
+`WM_CTLCOLOR*`, and the tool tips are recoloured as well. In the light
+theme every control is handed straight back to the visual style, and
+Windows high contrast switches the custom palette off completely.
+
 Every control can be reached from the keyboard: hold `Alt` to see the
 underlined accelerators (`Alt`+`D` for the repeat delay, `Alt`+`K` for the
 *Keyboard* preset, `Alt`+`P` for *Apply*, and so on), `Tab` walks the groups,
@@ -107,9 +114,9 @@ stays grey and nothing here has been compiled in CI.
 
 ## Checks that do run anywhere
 
-Six Python scripts stand in for the compiler while no toolchain is
-available. They need nothing but a Python 3 install and take under a second
-together:
+Seven Python scripts stand in for the compiler while no toolchain is
+available -- six checkers and a self test that verifies the checkers. They
+need nothing but a Python 3 install and take under a second together:
 
 ```cmd
 python tools\check-dialog-layout.py    :: geometry, captions, accelerators, tab stops
@@ -119,6 +126,7 @@ python tools\check-error-handling.py   :: Win32 results that are thrown away
 python tools\check-project.py          :: project references, configurations, precompiled header
 python tools\check-docs.py             :: links, headings and file names in the documentation
 python tools\selftest.py               :: breaks the sources on purpose to test the six above
+                                       :: 46 mutations, each one has to be caught
 python tools\check-all.py              :: all of the above, with one verdict at the end
 ```
 

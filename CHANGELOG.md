@@ -44,8 +44,11 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 - Six static checkers run on any machine with Python -- dialog layout,
   message maps, resources, error handling, project files and the
   documentation itself. `tools\check-all.py` runs the lot with one verdict,
-  and `tools\selftest.py` verifies them by breaking the repository in 39
-  ways and insisting each break is caught.
+  and `tools\selftest.py` verifies them by breaking the repository in 46
+  ways and insisting each break is caught. One of those rules reads two
+  files at once: a control that is custom drawn must not also be detached
+  from the visual style in `Theme.cpp`, because a detached control sends
+  no `NM_CUSTOMDRAW` and the painter would never run.
 - [docs/MFC.md](docs/MFC.md) covers `MSB8041`, the missing-MFC error that
   stops most first builds, and [docs/TESTING.md](docs/TESTING.md) is the
   manual pass the checkers cannot perform.
