@@ -73,6 +73,10 @@ public:
 	// native theme is restored.
 	void ApplyToControl(HWND hWndControl) const;
 
+	// Tooltips are top-level popups, so they are not reached by walking the
+	// dialog's children and need to be handed over explicitly.
+	void ApplyToToolTip(HWND hWndToolTip) const;
+
 private:
 	void Rebuild();
 

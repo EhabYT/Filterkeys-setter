@@ -664,6 +664,7 @@ void CFilterKeysSetterDlg::InitToolTips()
 	m_toolTip.SetMaxTipWidth(300);
 	m_toolTip.SetDelayTime(TTDT_AUTOPOP, 15000);
 	m_toolTip.Activate(TRUE);
+	m_theme.ApplyToToolTip(m_toolTip.GetSafeHwnd());
 }
 
 BOOL CFilterKeysSetterDlg::PreTranslateMessage(MSG* pMsg)
@@ -766,6 +767,7 @@ void CFilterKeysSetterDlg::ApplyTheme()
 {
 	m_theme.ApplyToTitleBar(GetSafeHwnd());
 	ApplyThemeToChildren();
+	m_theme.ApplyToToolTip(m_toolTip.GetSafeHwnd());
 	Invalidate(TRUE);
 	UpdateWindow();
 }

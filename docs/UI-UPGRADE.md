@@ -589,6 +589,35 @@ handler existed, was declared, was mapped, had the right signature and
 addressed a control that exists. All of that was true while the dialog
 still looked wrong.
 
+## The one window the child walk never reaches
+
+`ApplyThemeToChildren()` walks `GW_CHILD` / `GW_HWNDNEXT` and hands every
+control to `CTheme::ApplyToControl`. A tooltip is not in that list: it is
+a top-level popup owned by the dialog, not a child of it. So while the
+dialog went dark, the 28 tooltips stayed the system's pale yellow -- the
+only part of the program still showing the light theme, and the part that
+appears right next to the pointer.
+
+`CTheme::ApplyToToolTip` now handles it, and it is handed the tooltip
+explicitly from two places: at the end of `InitToolTips()` and in
+`ApplyTheme()`, so the Dark theme check box switches the tooltips too.
+`GetSafeHwnd()` returns NULL before the control exists, which covers the
+first `ApplyTheme()` during `OnInitDialog`, before `InitToolTips()` has
+run.
+
+The detail that makes it work: `TTM_SETTIPBKCOLOR` and
+`TTM_SETTIPTEXTCOLOR` are ignored while the tooltip is drawn by the visual
+style engine, so the control has to be detached with
+`SetWindowTheme(h, L"", L"")` first -- the same call that caused the white
+edit boxes, used here for the opposite purpose. A tooltip loses nothing by
+being detached, since it is a rectangle with one run of text; the rounded
+style frame is all that goes. Light mode puts the style back and restores
+`COLOR_INFOBK` / `COLOR_INFOTEXT` rather than hard-coding white, so a
+custom system scheme still wins.
+
+The colours are the surface blue `#1D5188` with white text, 8.12:1, the
+same pairing the edit boxes use.
+
 ## Colours the documentation claims
 
 Two numbers in this file were wrong, and nothing would have noticed.

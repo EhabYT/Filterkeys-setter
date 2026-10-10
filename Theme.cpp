@@ -238,6 +238,32 @@ void CTheme::ApplyToTitleBar(HWND hWnd) const
 	::FreeLibrary(hDwm);
 }
 
+void CTheme::ApplyToToolTip(HWND hWndToolTip) const
+{
+	if (hWndToolTip == NULL) {
+		return;
+	}
+
+	// TTM_SETTIPBKCOLOR and TTM_SETTIPTEXTCOLOR are ignored while the tooltip
+	// is drawn by the visual style engine, which is why the control has to be
+	// detached first. Unlike the dialog's own controls a tooltip loses nothing
+	// by that: it is a rectangle with one run of text.
+	if (IsDark()) {
+		::SetWindowTheme(hWndToolTip, L"", L"");
+		::SendMessage(hWndToolTip, TTM_SETTIPBKCOLOR,
+		              static_cast<WPARAM>(m_palette.clrSurface), 0);
+		::SendMessage(hWndToolTip, TTM_SETTIPTEXTCOLOR,
+		              static_cast<WPARAM>(m_palette.clrText), 0);
+	}
+	else {
+		::SetWindowTheme(hWndToolTip, NULL, NULL);
+		::SendMessage(hWndToolTip, TTM_SETTIPBKCOLOR,
+		              static_cast<WPARAM>(::GetSysColor(COLOR_INFOBK)), 0);
+		::SendMessage(hWndToolTip, TTM_SETTIPTEXTCOLOR,
+		              static_cast<WPARAM>(::GetSysColor(COLOR_INFOTEXT)), 0);
+	}
+}
+
 void CTheme::ApplyToControl(HWND hWndControl) const
 {
 	if (hWndControl == NULL) {
