@@ -589,6 +589,28 @@ handler existed, was declared, was mapped, had the right signature and
 addressed a control that exists. All of that was true while the dialog
 still looked wrong.
 
+## The states a hand-drawn control has to remember
+
+A painter replaces the style engine completely, so every state the engine
+knew about has to be written out. `PaintThemedCheckBox` started with
+three -- resting, hot, focused -- and was missing two:
+
+* **Pressed.** Holding the mouse button on a check box gave no feedback at
+  all. `CDIS_SELECTED` now darkens the indicator to the bottom of the
+  background gradient, which together with the lighter hot state gives the
+  same three steps the push buttons already had. A click reads the same
+  way everywhere in the dialog.
+* **Indeterminate.** `BM_GETCHECK` has three answers, and the code
+  compared against `BST_CHECKED` only, so a third-state box would have
+  looked unchecked. It now draws the filled square the style engine uses,
+  and a muted dot for a third-state radio button. No control in this
+  dialog is a `BS_3STATE` today; the point is that the painter no longer
+  quietly lies if one is added.
+
+This is the maintenance cost named under *Known trade-offs*, in concrete
+form: five painters that have to be kept honest about states nobody is
+currently looking at.
+
 ## The one window the child walk never reaches
 
 `ApplyThemeToChildren()` walks `GW_CHILD` / `GW_HWNDNEXT` and hands every

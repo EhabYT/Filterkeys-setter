@@ -58,6 +58,19 @@ covers the rest.
       running** and disables the check box; turning it off restores the
       stored preference.
 
+- [ ] In the dark theme **nothing is left white or grey**: the four
+      numeric fields, the test field, the five group box frames and their
+      captions, the check boxes and the two radio buttons are all drawn in
+      the blue palette. A white box or a caption with a line through it
+      means that control stopped receiving `NM_CUSTOMDRAW`.
+- [ ] Hovering a check box lightens its indicator, holding the mouse
+      button down darkens it, and the keyboard focus draws a dotted
+      rectangle around the caption -- the same three states the push
+      buttons show.
+- [ ] Switching the theme back and forth repeatedly leaves no stripes or
+      leftovers behind: every painter redraws the slice of the background
+      gradient that sits behind its control.
+
 ## 3. Keyboard
 
 - [ ] Holding `Alt` underlines the accelerators.
@@ -107,6 +120,11 @@ covers the rest.
       that style was lost.
 - [ ] A tip stays on screen long enough to read (15 seconds) and wraps
       rather than running off the screen.
+- [ ] In the dark theme the tips are blue with white text, not the system
+      pale yellow, and they change over immediately when the *Dark theme*
+      check box is toggled. In the light theme they look exactly like
+      every other tooltip on the machine, including a custom colour
+      scheme if one is set.
 
 ## 7. Display
 

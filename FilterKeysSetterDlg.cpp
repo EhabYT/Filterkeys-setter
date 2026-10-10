@@ -41,7 +41,10 @@ namespace
 		const bool enabled = (pcd->uItemState & CDIS_DISABLED) == 0;
 		const bool focused = (pcd->uItemState & CDIS_FOCUS) != 0;
 		const bool hot     = (pcd->uItemState & CDIS_HOT) != 0;
-		const bool checked = (pBox->SendMessage(BM_GETCHECK) == BST_CHECKED);
+		const bool pressed = (pcd->uItemState & CDIS_SELECTED) != 0;
+		const LRESULT check = pBox->SendMessage(BM_GETCHECK);
+		const bool checked = (check == BST_CHECKED);
+		const bool mixed   = (check == BST_INDETERMINATE);
 
 		CRect rc(pcd->rc);
 		theme.PaintBackgroundSlice(*pDC, rcBehind, rc);
@@ -55,7 +58,12 @@ namespace
 		CRect rcBox(rc.left, rc.top + (rc.Height() - side) / 2,
 		            rc.left + side, rc.top + (rc.Height() - side) / 2 + side);
 
-		const COLORREF clrFace   = hot ? pal.clrAccentMuted : pal.clrSurface;
+		// Pressed is darker than resting, hot is lighter: the same three
+		// steps the push buttons use, so a click reads the same way
+		// everywhere in the dialog.
+		const COLORREF clrFace   = pressed ? pal.clrBackBottom
+		                         : hot     ? pal.clrAccentMuted
+		                                   : pal.clrSurface;
 		const COLORREF clrBorder = (focused || hot) ? pal.clrAccent : pal.clrAccentMuted;
 		const COLORREF clrMark   = enabled ? pal.clrText : pal.clrTextDisabled;
 
@@ -66,11 +74,12 @@ namespace
 				CBrush* pOldBrush = pDC->SelectObject(&brFace);
 				CPen* pOldPen = pDC->SelectObject(&penBorder);
 				pDC->Ellipse(rcBox);
-				if (checked) {
+				if (checked || mixed) {
 					CRect rcDot(rcBox);
 					rcDot.DeflateRect(side / 4, side / 4);
 					CBrush brMark;
-					if (brMark.CreateSolidBrush(clrMark)) {
+					if (brMark.CreateSolidBrush(mixed ? pal.clrTextDisabled
+					                                  : clrMark)) {
 						CBrush* pPrev = pDC->SelectObject(&brMark);
 						pDC->Ellipse(rcDot);
 						pDC->SelectObject(pPrev);
@@ -83,7 +92,14 @@ namespace
 		else {
 			pDC->FillSolidRect(rcBox, clrFace);
 			pDC->Draw3dRect(rcBox, clrBorder, clrBorder);
-			if (checked) {
+			if (mixed) {
+				// BST_INDETERMINATE: a filled square, the way the style
+				// engine shows "some of the things below, not all".
+				CRect rcMixed(rcBox);
+				rcMixed.DeflateRect(side / 4, side / 4);
+				pDC->FillSolidRect(rcMixed, pal.clrTextDisabled);
+			}
+			else if (checked) {
 				CPen penMark;
 				if (penMark.CreatePen(PS_SOLID, max(1, side / 7), clrMark)) {
 					CPen* pOldPen = pDC->SelectObject(&penMark);

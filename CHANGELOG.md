@@ -18,6 +18,7 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 - **Tool tips on 28 controls**, including the three read-outs whose meaning is least obvious.
 - **Alt accelerators on all 22 interactive controls** — the dialog previously had none at all.
 - **Segoe UI 9 pt** instead of the Windows XP era `MS Shell Dlg`, system DPI awareness, and a new application icon and logo.
+- **Every control in the dark theme is drawn by the dialog itself** — push buttons, trackbars, group boxes, check boxes and radio buttons through `NM_CUSTOMDRAW`, edits and statics through `WM_CTLCOLOR*`, and the tool tips through `TTM_SETTIPBKCOLOR`. Leaving any of them to Windows produced a white box, a frame struck through its own caption or a pale yellow tip in an otherwise dark window.
 
 ### Bugs fixed
 
