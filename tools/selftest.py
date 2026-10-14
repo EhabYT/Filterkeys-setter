@@ -181,7 +181,7 @@ CASES = [
      "not an output path of the project"),
 
     ("changelog left behind at the old version", RESOURCES, "CHANGELOG.md",
-     "## 1.11 -- 2026-10-07", "## 1.10 -- 2026-10-07",
+     "## 1.11 -- 2026-10-14", "## 1.10 -- 2026-10-14",
      "newest CHANGELOG.md entry"),
 
     ("release workflow pointed at the solution", PROJECT,

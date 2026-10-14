@@ -6,13 +6,11 @@ done from the static checks alone.
 ## 1. Check the tree
 
 ```cmd
-python tools\check-dialog-layout.py
-python tools\check-message-map.py
-python tools\check-resources.py
-python tools\check-error-handling.py
-python tools\check-project.py
-python tools\selftest.py
+python tools\check-all.py
 ```
+
+That is the seven checkers and the self test, ending in
+`all 8 checks passed`. Anything else is a reason not to cut the release.
 
 `check-resources.py` is the one that matters most here: it compares the
 version in `VERSIONINFO`, the about box, the installer `ProductVersion` and

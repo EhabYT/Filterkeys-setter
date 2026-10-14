@@ -4,7 +4,7 @@ All notable changes to FilterKeys Setter. The entry for the current version
 is also the text of its GitHub release; keep the two in step when publishing
 (see [docs/RELEASE.md](docs/RELEASE.md)).
 
-## 1.11 -- 2026-10-07
+## 1.11 -- 2026-10-14
 
 FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 
@@ -49,9 +49,15 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
   files at once: a control that is custom drawn must not also be detached
   from the visual style in `Theme.cpp`, because a detached control sends
   no `NM_CUSTOMDRAW` and the painter would never run.
+- Two pictures in the documentation are generated rather than drawn:
+  `tools\render-dialog.py` draws the main dialog and the about box from
+  the resource script in both themes, and `tools\render-palette.py` draws
+  the palette sheet out of `Theme.cpp`, contrast ratios included.
 - [docs/MFC.md](docs/MFC.md) covers `MSB8041`, the missing-MFC error that
-  stops most first builds, and [docs/TESTING.md](docs/TESTING.md) is the
-  manual pass the checkers cannot perform.
+  stops most first builds, [docs/TESTING.md](docs/TESTING.md) is the
+  manual pass the checkers cannot perform, [docs/BRAND.md](docs/BRAND.md)
+  is the colour identity the checkers hold the code to, and
+  [docs/FLOW.md](docs/FLOW.md) is the whole thing as three diagrams.
 
 ### Building it yourself
 

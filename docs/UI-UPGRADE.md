@@ -1198,37 +1198,51 @@ Not part of the UI work, but found while reading the surrounding code:
 
 ## Rollback
 
-Each step is a separate commit, so a single change can be reverted on its own:
+The work arrived as one commit per decision, so a single step can still be
+reverted on its own. These are the landmarks, oldest first:
 
 | Commit | Change |
 |---|---|
 | `8cf69e8` | Segoe UI font, DPI awareness, manifest |
 | `bd0907d` | Dark theme, sliders, status line |
-| `3f61620` | About box theming, tooltips, flags readout |
+| `3f61620` | About box theming, tool tips, flags readout |
+| `a20fcdf` | High contrast support |
+| `b60d955` | The icon's blue palette |
+| `72b6628` | Push buttons drawn by the dialog |
+| `5c8e761` | Group boxes, after the first real screenshot |
+| `444e1d7` | Check boxes and radio buttons |
+| `a6c339f` | Tool tips |
+| `7d0874d` | The light theme brought into the palette |
+| `1f9f187` | The sunken edge removed from the edit boxes |
 
-Full rollback of the UI work:
+Reverting the lot is no longer a sensible `git revert` list -- it is most of
+seventy commits, and the checkers, the documentation and the previews came
+with them. Two switches do the job instead, both one line:
 
-```cmd
-git revert --no-commit 3f61620 bd0907d 8cf69e8
-git commit -m "Revert the 1.11 UI upgrade"
-```
+* **Native light look for everyone:** make `CTheme::LoadPreference()` return
+  `ThemeMode::Light`. The dialog is still painted by the program, in the
+  white and blue palette.
+* **Hand every control back to Windows:** make `CTheme::IsBranded()` return
+  `false`. That is the high contrast path, which is written and tested: the
+  palette falls back to the system colours, every painter returns false and
+  the edit boxes get their frames back.
 
-To keep the code but disable the dark theme for everyone, make
-`CTheme::LoadPreference()` return `ThemeMode::Light`; nothing else depends on
-the mode. Users can also clear the preference themselves by deleting
+Users can clear their own preference by deleting
 `HKEY_CURRENT_USER\Software\FilterKeysSetter`.
 
 ## Still open
 
 `.github/workflows/build.yml` replaces the unusable CMake-on-Ubuntu starter
-workflow with the six static checks on Ubuntu --
+workflow with all seven static checks on Ubuntu --
 `check-dialog-layout.py`, `check-message-map.py`, `check-resources.py`,
-`check-error-handling.py`, `check-project.py` and `selftest.py` -- plus MSBuild on both
+`check-error-handling.py`, `check-project.py`, `check-docs.py` and
+`check-theme.py`, followed by `selftest.py` -- plus MSBuild on both
 `windows-2022` (VS 2022, v143) and `windows-2025` (VS 2026, v145), for
 `Win32` and `x64`. It could not be
 pushed: GitHub rejects workflow files from an app without the `workflows`
-permission. Until it lands, none of the above has been compiled in CI, and
-the checks only run when someone runs them by hand:
+permission. The reviewable copy is `docs/workflows/build.yml`. Until it
+lands, none of the above has been compiled in CI, and the checks only run
+when someone runs them by hand:
 
 ```
 python tools\check-all.py

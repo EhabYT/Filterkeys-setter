@@ -17,7 +17,7 @@ entry for the current version is also the text of its GitHub release.
 Releases can be built by GitHub rather than by hand -- see
 [docs/workflows/](docs/workflows/README.md).
 
-* 1.11 2026-10-07 Dark and light themes cut from one palette and painted by
+* 1.11 2026-10-14 Dark and light themes cut from one palette and painted by
   the dialog itself, repeat sliders, tool tips on every setting, Alt
   accelerators on every control, Segoe UI dialog font, system DPI awareness,
   new application icon and logo; several failure paths fixed that silently
