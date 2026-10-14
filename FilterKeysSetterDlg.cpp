@@ -932,7 +932,34 @@ BOOL CFilterKeysSetterDlg::OnEraseBkgnd(CDC* pDC)
 	CRect rect;
 	GetClientRect(&rect);
 	m_theme.PaintBackground(*pDC, rect);
+	PaintEditFrames(*pDC);
 	return TRUE;
+}
+
+// The five edit controls have no frame of their own any more (see
+// CTheme::SetEditFrame), so the dialog draws it for them, one pixel in the
+// muted accent, in the gap the client edge used to occupy. Deliberately not
+// focus-dependent: the parent background is not repainted when focus moves
+// between two fields, so a focus colour here would go stale. The caret and
+// the selection show focus, as they do in every other edit box in Windows.
+void CFilterKeysSetterDlg::PaintEditFrames(CDC& dc)
+{
+	static const UINT kEdits[] = { IDC_WAIT_EDIT, IDC_DELAY_EDIT,
+	                               IDC_REPEAT_EDIT, IDC_BOUNCE_EDIT,
+	                               IDC_TEST_EDIT };
+
+	const COLORREF clrFrame = m_theme.Palette().clrAccentMuted;
+	for (size_t i = 0; i < _countof(kEdits); ++i) {
+		CWnd* pEdit = GetDlgItem(kEdits[i]);
+		if (pEdit == NULL || !::IsWindow(pEdit->GetSafeHwnd())) {
+			continue;
+		}
+		CRect rc;
+		pEdit->GetWindowRect(&rc);
+		ScreenToClient(&rc);
+		rc.InflateRect(1, 1);
+		dc.Draw3dRect(rc, clrFrame, clrFrame);
+	}
 }
 
 HBRUSH CFilterKeysSetterDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)

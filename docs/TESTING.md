@@ -51,6 +51,11 @@ covers the rest.
 - [ ] Clearing *Dark theme* switches immediately, title bar included, to
       the light theme: a white background drifting to pale blue at the
       foot, white fields, navy text, no grey anywhere.
+- [ ] The five edit boxes have a flat one pixel blue outline, not the
+      grey sunken trench Windows draws by default, and their text does
+      not sit hard against that outline. Disabling one (*Bounce time*,
+      by selecting the first radio button) keeps it in the theme colours
+      rather than turning it grey.
 - [ ] The light theme is drawn by the program too, so the same checks
       apply to it: nothing left in the system grey, group box captions
       not struck through, tool tips white with navy text.

@@ -92,6 +92,11 @@ public:
 	// dialog's children and need to be handed over explicitly.
 	void ApplyToToolTip(HWND hWndToolTip) const;
 
+	// Adds or removes the sunken client edge of an edit control. The frame
+	// is non-client and drawn in the system 3D colours, so a branded edit
+	// has to do without it and let the dialog outline it instead.
+	static void SetEditFrame(HWND hWndEdit, bool bFlat);
+
 private:
 	void Rebuild();
 

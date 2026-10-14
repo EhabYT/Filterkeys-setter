@@ -42,6 +42,7 @@ protected:
 	void InitSliders();
 	void InitToolTips();
 	CRect BackgroundBehind(HWND hWndChild);
+	void PaintEditFrames(CDC& dc);
 	void SyncSliderFromEdit(CSliderCtrl& slider, CEdit& edit);
 	void SyncEditFromSlider(CSliderCtrl& slider, CEdit& edit);
 

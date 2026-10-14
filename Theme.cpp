@@ -335,12 +335,53 @@ void CTheme::ApplyToControl(HWND hWndControl) const
 	}
 
 	// An empty theme name detaches the control from the visual style; passing
-	// NULL puts it back under the style that matches its class.
-	if (IsDark()) {
+	// NULL puts it back under the style that matches its class. Both brand
+	// themes detach: in light mode a themed edit would still paint its own
+	// disabled background in the system grey, which is the one colour the
+	// palette has no place for.
+	if (IsBranded()) {
 		::SetWindowTheme(hWndControl, L"", L"");
 	}
 	else {
 		::SetWindowTheme(hWndControl, NULL, NULL);
 	}
+
+	if (isEdit) {
+		SetEditFrame(hWndControl, IsBranded());
+	}
+
 	::InvalidateRect(hWndControl, NULL, TRUE);
+}
+
+void CTheme::SetEditFrame(HWND hWndEdit, bool bFlat)
+{
+	// A branded edit has no frame of its own. The sunken client edge is
+	// drawn by the non-client code in the system 3D colours, which no brush
+	// and no WM_CTLCOLOREDIT can reach -- a grey trench around a white or
+	// navy field. Removing it leaves a flat rectangle, and the dialog draws
+	// the one pixel outline behind it (see PaintEditFrames).
+	const LONG_PTR exStyle = ::GetWindowLongPtr(hWndEdit, GWL_EXSTYLE);
+	const LONG_PTR style   = ::GetWindowLongPtr(hWndEdit, GWL_STYLE);
+
+	const LONG_PTR wantEx = bFlat ? (exStyle & ~WS_EX_CLIENTEDGE)
+	                              : (exStyle | WS_EX_CLIENTEDGE);
+	const LONG_PTR want   = bFlat ? (style & ~WS_BORDER)
+	                              : style;
+
+	if (wantEx == exStyle && want == style) {
+		return;
+	}
+
+	::SetWindowLongPtr(hWndEdit, GWL_EXSTYLE, wantEx);
+	::SetWindowLongPtr(hWndEdit, GWL_STYLE, want);
+	// The frame only shrinks once the window is told its frame changed.
+	::SetWindowPos(hWndEdit, NULL, 0, 0, 0, 0,
+	               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
+	               | SWP_FRAMECHANGED);
+
+	// Without the client edge the text would start hard against the
+	// outline, so give it back the two pixels the edge used to provide.
+	const LRESULT margin = bFlat ? MAKELPARAM(2, 2) : MAKELPARAM(0, 0);
+	::SendMessage(hWndEdit, EM_SETMARGINS,
+	              EC_LEFTMARGIN | EC_RIGHTMARGIN, margin);
 }

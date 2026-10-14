@@ -664,6 +664,34 @@ implementation and were corrected at the same time -- the indicator face
 of a ticked check box is the surface colour, not the accent, the tick is
 drawn in the text colour, and a radio dot likewise.
 
+## The grey trench around the edit boxes
+
+One frame in the dialog belonged to neither painter nor brush: the sunken
+client edge of the five edit controls. It is **non-client**, drawn by
+`DefWindowProc` in `COLOR_3DSHADOW` and `COLOR_3DHIGHLIGHT`, so no
+`WM_CTLCOLOREDIT` brush and no custom draw can reach it. In the dark
+theme that is a grey trench around a navy field; in the new light theme
+it is the one grey left on a white dialog.
+
+`CTheme::SetEditFrame` removes `WS_EX_CLIENTEDGE` and `WS_BORDER` while a
+brand theme is active -- the change only takes effect after
+`SWP_FRAMECHANGED`, which is the part that is easy to miss -- and
+`EM_SETMARGINS` gives back the two pixels of breathing room the edge used
+to provide. `CFilterKeysSetterDlg::PaintEditFrames` then draws a one pixel
+outline in the muted accent into the gap, straight after the background
+gradient in `OnEraseBkgnd`.
+
+That outline is deliberately **not** focus-coloured. The parent background
+is not repainted when focus moves from one field to the next, so a focus
+colour drawn here would go stale on the field being left. The caret and
+the selection show focus, exactly as they do in every other edit box in
+Windows.
+
+The same round made light mode detach its edits and statics from the
+visual style, which until now only dark mode did. A themed edit paints its
+own disabled background in the system grey, and grey is the one colour the
+brand palette has no place for.
+
 ## The states a hand-drawn control has to remember
 
 A painter replaces the style engine completely, so every state the engine
