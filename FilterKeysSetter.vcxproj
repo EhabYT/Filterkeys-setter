@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -29,14 +29,22 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -44,14 +52,22 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>true</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>Application</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
-    <PlatformToolset>v143</PlatformToolset>
+    <!-- Resolve the toolset from the Visual Studio that is actually running:
+         v143 in VS 2022, v145 in VS 2026 (which no longer ships v143).
+         Override with /p:PlatformToolset=... to pin a specific toolset. -->
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">$(DefaultPlatformToolset)</PlatformToolset>
+    <PlatformToolset Condition="'$(PlatformToolset)' == ''">v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -86,6 +102,20 @@
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <LinkIncremental>false</LinkIncremental>
   </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <!-- Keep /permissive- off. This is 2013-era MFC code; the stricter
+           two-phase lookup of the v145 toolset would bury the real
+           diagnostics under conformance errors in headers we do not own. -->
+      <ConformanceMode>false</ConformanceMode>
+    </ClCompile>
+    <Manifest>
+      <!-- Declare system DPI awareness so the dialog is rendered crisply instead
+           of being bitmap-stretched by Windows on displays scaled above 100%. -->
+      <EnableDpiAwareness>true</EnableDpiAwareness>
+      <AdditionalManifestFiles>res\FilterKeysSetter.manifest;%(AdditionalManifestFiles)</AdditionalManifestFiles>
+    </Manifest>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <PrecompiledHeader>Use</PrecompiledHeader>
@@ -93,6 +123,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -115,6 +147,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -139,6 +173,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -165,6 +201,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_WINDOWS;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -183,24 +221,18 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ChildFrm.h" />
-    <ClInclude Include="ClassView.h" />
-    <ClInclude Include="FileView.h" />
-    <ClInclude Include="Filterkeys setter.h" />
-    <ClInclude Include="Filterkeys setterDoc.h" />
-    <ClInclude Include="Filterkeys setterView.h" />
+    <ClInclude Include="FilterKeysSetter.h" />
+    <ClInclude Include="FilterKeysSetterDlg.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="MainFrm.h" />
-    <ClInclude Include="OutputWnd.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="PropertiesWnd.h" />
-    <ClInclude Include="Resource.h" />
+    <ClInclude Include="resource.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="ViewTree.h" />
+    <ClInclude Include="Theme.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="FilterKeysSetter.cpp" />
     <ClCompile Include="FilterKeysSetterDlg.cpp" />
+    <ClCompile Include="Theme.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -212,10 +244,11 @@
     <ResourceCompile Include="FilterKeysSetter.rc" />
   </ItemGroup>
   <ItemGroup>
-<Image Include="res\FilterKeysSetter.ico" />
+    <Image Include="res\FilterKeysSetter.ico" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\Filterkeyssetter.rc2" />
+    <None Include="res\FilterKeysSetter.manifest" />
+    <None Include="res\FilterKeysSetter.rc2" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
