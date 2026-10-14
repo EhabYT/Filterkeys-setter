@@ -39,7 +39,9 @@ remembered in `HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme`.
 
 The whole identity -- every colour, what it is for, and the two
 deliberate extensions -- is in [docs/BRAND.md](docs/BRAND.md), which the
-checkers hold the code to.
+checkers hold the code to. [docs/FLOW.md](docs/FLOW.md) has the same thing
+as a diagram: which control the program paints itself, and which one it
+hands back to Windows.
 
 Windows high contrast overrides both: the dialog then uses the system
 colours unchanged and lets Windows draw every control, because those

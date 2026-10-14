@@ -1055,7 +1055,7 @@ External URLs are left alone: there is no network here, and a page that
 moved is not this repository's fault. The anchor rule follows GitHub's
 slug algorithm -- lowercase, punctuation dropped, spaces to hyphens.
 
-Expected output: `9 document(s), 0 problem(s)`.
+Expected output: `10 document(s), 0 problem(s)`.
 
 ## Running them all at once
 
@@ -1237,6 +1237,6 @@ python tools\check-all.py
 That runs all seven. The expected output is two `ok` lines from
 `check-dialog-layout.py`, `0 problem(s)` with a single note about
 `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`, `3 file(s), 0 problem(s)`,
-`15 reference(s), 0 problem(s)` with three notes, `9 document(s),
+`15 reference(s), 0 problem(s)` with three notes, `10 document(s),
 0 problem(s)`, `51 case(s), 0 failure(s)` and the closing line
 `all 8 checks passed`. Anything else is a regression.
