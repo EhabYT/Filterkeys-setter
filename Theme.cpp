@@ -377,12 +377,37 @@ void CTheme::SetEditFrame(HWND hWndEdit, bool bFlat)
 		return;
 	}
 
+	// The client area has to come out of this the same size and in the same
+	// place, or the text inside the field moves: a single line edit draws
+	// its text against the top of its client rectangle, so two pixels of
+	// frame turning into two pixels of client area would drop the baseline.
+	// Measure the client rectangle in screen coordinates first.
+	RECT rcClient = { 0, 0, 0, 0 };
+	::GetClientRect(hWndEdit, &rcClient);
+	::MapWindowPoints(hWndEdit, NULL, reinterpret_cast<LPPOINT>(&rcClient), 2);
+
 	::SetWindowLongPtr(hWndEdit, GWL_EXSTYLE, wantEx);
 	::SetWindowLongPtr(hWndEdit, GWL_STYLE, want);
-	// The frame only shrinks once the window is told its frame changed.
-	::SetWindowPos(hWndEdit, NULL, 0, 0, 0, 0,
-	               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE
-	               | SWP_FRAMECHANGED);
+
+	// Which window rectangle holds that client rectangle under the new
+	// styles. AdjustWindowRectEx knows what each frame costs, so this does
+	// not hard-code the two pixels of a client edge.
+	RECT rcWindow = rcClient;
+	if (!::AdjustWindowRectEx(&rcWindow,
+	                          static_cast<DWORD>(want) & ~static_cast<DWORD>(WS_CHILD),
+	                          FALSE, static_cast<DWORD>(wantEx))) {
+		rcWindow = rcClient;
+	}
+	HWND hWndParent = ::GetParent(hWndEdit);
+	if (hWndParent != NULL) {
+		::MapWindowPoints(NULL, hWndParent, reinterpret_cast<LPPOINT>(&rcWindow), 2);
+	}
+
+	// SWP_FRAMECHANGED is what makes the window recalculate its non-client
+	// area at all; without it the frame would still be there.
+	::SetWindowPos(hWndEdit, NULL, rcWindow.left, rcWindow.top,
+	               rcWindow.right - rcWindow.left, rcWindow.bottom - rcWindow.top,
+	               SWP_NOZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED);
 
 	// Without the client edge the text would start hard against the
 	// outline, so give it back the two pixels the edge used to provide.

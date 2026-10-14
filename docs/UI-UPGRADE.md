@@ -748,6 +748,17 @@ to provide. `CFilterKeysSetterDlg::PaintEditFrames` then draws a one pixel
 outline in the muted accent into the gap, straight after the background
 gradient in `OnEraseBkgnd`.
 
+Taking the frame away makes the window's client area two pixels bigger in
+each direction, and that would have moved the text: a single line edit
+draws against the top of its client rectangle, so the field would have
+kept its outline but dropped its baseline. `SetEditFrame` therefore
+measures the client rectangle first, works out with `AdjustWindowRectEx`
+which window rectangle holds that same client rectangle under the new
+styles, and resizes the control to it. The client area comes out
+unchanged, the control shrinks into the space the edge occupied, and the
+outline is drawn where the edge used to be. Nothing in the `.rc` moves, so
+`check-dialog-layout.py` still measures the geometry that was designed.
+
 That outline is deliberately **not** focus-coloured. The parent background
 is not repainted when focus moves from one field to the next, so a focus
 colour drawn here would go stale on the field being left. The caret and

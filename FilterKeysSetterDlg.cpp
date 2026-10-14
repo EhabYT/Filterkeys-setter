@@ -951,7 +951,8 @@ void CFilterKeysSetterDlg::PaintEditFrames(CDC& dc)
 	const COLORREF clrFrame = m_theme.Palette().clrAccentMuted;
 	for (size_t i = 0; i < _countof(kEdits); ++i) {
 		CWnd* pEdit = GetDlgItem(kEdits[i]);
-		if (pEdit == NULL || !::IsWindow(pEdit->GetSafeHwnd())) {
+		if (pEdit == NULL || !::IsWindow(pEdit->GetSafeHwnd())
+		    || !pEdit->IsWindowVisible()) {
 			continue;
 		}
 		CRect rc;
