@@ -442,6 +442,18 @@ rate*, usually with the identical string; announcing an unchanged value
 is worse than saying nothing, and the repaint that came with it was
 wasted too.
 
+A rule nobody can keep by memory is a rule that lasts until the next
+hurried edit, so `check-message-map.py` keeps it instead. Once
+`SetReadout` exists in a file, a direct `SetWindowText` on one of the
+three labels is a problem:
+
+```
+FilterKeysSetterDlg.cpp:1328: m_staticStatus.SetWindowText() bypasses
+SetReadout(), so the change is never announced
+```
+
+The self test proves the rule fires, which makes **54 mutations**.
+
 ## Push buttons in the dark theme
 
 The eight push buttons were the last native-grey island in the dark dialog,
@@ -937,7 +949,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **53 mutations**.
+Both are covered by the self test, which now runs **54 mutations**.
 
 ## Handler signatures
 
@@ -1149,7 +1161,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all eight checkers are
-clean on the untouched copy, then applies **53 mutations** one at a time --
+clean on the untouched copy, then applies **54 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -1161,7 +1173,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `53 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `54 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -1310,5 +1322,5 @@ That runs all seven. The expected output is two `ok` lines from
 `check-dialog-layout.py`, `0 problem(s)` with a single note about
 `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`, `3 file(s), 0 problem(s)`,
 `15 reference(s), 0 problem(s)` with three notes, `10 document(s),
-0 problem(s)`, `53 case(s), 0 failure(s)` and the closing line
+0 problem(s)`, `54 case(s), 0 failure(s)` and the closing line
 `all 9 checks passed`. Anything else is a regression.

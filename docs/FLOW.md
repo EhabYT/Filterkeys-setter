@@ -118,7 +118,7 @@ flowchart LR
     end
 
     all --> checks
-    checks --> self["selftest.py<br/>53 mutations, each has to be caught"]
+    checks --> self["selftest.py<br/>54 mutations, each has to be caught"]
     self --> verdict{"all 9 checks passed?"}
     verdict -- no --> edit
     verdict -- yes --> build["tools/build.cmd<br/>Win32 and x64, needs MSVC + MFC"]

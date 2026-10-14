@@ -124,6 +124,11 @@ CASES = [
      "if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {\n\t\t\treturn false;\n\t\t}\n\n\t\tCDC* pDC = CDC::FromHandle(pcd->hdc);\n\t\tCWnd* pBox",
      "asks IsDark()"),
 
+    ("read-out written without announcing the change", MAP, DLG,
+     "SetReadout(m_staticStatus, s);",
+     "m_staticStatus.SetWindowText(s);",
+     "bypasses SetReadout"),
+
     # -- check-theme.py ---------------------------------------------------
     ("field added to ThemePalette but not to both palettes", THEME, HDR_THEME,
      "\tCOLORREF clrTextDisabled;   // greyed-out controls",

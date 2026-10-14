@@ -53,7 +53,7 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
   message maps, resources, error handling, project files, the
   documentation itself, the theme, and the generated pictures against the
   sources they were drawn from. `tools\check-all.py` runs the lot with one verdict,
-  and `tools\selftest.py` verifies them by breaking the repository in 53
+  and `tools\selftest.py` verifies them by breaking the repository in 54
   ways and insisting each break is caught. One of those rules reads two
   files at once: a control that is custom drawn must not also be detached
   from the visual style in `Theme.cpp`, because a detached control sends

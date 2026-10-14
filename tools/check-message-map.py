@@ -434,6 +434,27 @@ def tooltip_ids(text):
     return set(re.findall(r"\{\s*(ID\w+)", block.group(1)))
 
 
+# The three labels that report something nobody is looking at: the status
+# line, the characters per second and the flags value. Their text has to go
+# through SetReadout(), which fires EVENT_OBJECT_NAMECHANGE -- a plain
+# SetWindowText() on one of them is a change no screen reader hears about.
+READOUTS = ("m_staticStatus", "m_staticCharsPerSec", "m_staticFlagVal")
+
+
+def check_readouts(text, rel):
+    """Read-out labels must be written through SetReadout(), not directly."""
+    problems = []
+    if "SetReadout" not in text:
+        return problems
+
+    for member in READOUTS:
+        for match in re.finditer(r"\b%s\s*\.\s*SetWindowText\s*\(" % member, text):
+            line = text.count("\n", 0, match.start()) + 1
+            problems.append("%s:%d: %s.SetWindowText() bypasses SetReadout(), "
+                            "so the change is never announced" % (rel, line, member))
+    return problems
+
+
 def check_wiring(sources, rc_path):
     """Control IDs referenced from code must exist in the .rc dialogs."""
     problems, notes = [], []
@@ -453,6 +474,7 @@ def check_wiring(sources, rc_path):
         problems += check_ddx_types(text, controls, types, rel)
         problems += check_customdraw(text, controls, rel)
         problems += check_painter_guards(text, rel)
+        problems += check_readouts(text, rel)
 
         referenced = set()
         referenced |= ddx_ids(text)

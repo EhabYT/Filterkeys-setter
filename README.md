@@ -140,8 +140,8 @@ python tools\check-docs.py             :: links, headings and file names in the 
 python tools\check-theme.py            :: the palette as the only source of colour in the code
 python tools\check-images.py           :: the generated pictures against the sources they came from
 python tools\selftest.py               :: breaks the sources on purpose to test the eight above
-                                       :: 53 mutations, each one has to be caught
-                                       :: (51 without Pillow: the picture cases are skipped)
+                                       :: 54 mutations, each one has to be caught
+                                       :: (52 without Pillow: the picture cases are skipped)
 python tools\check-all.py              :: all of the above, with one verdict at the end
 ```
 
