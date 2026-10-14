@@ -14,6 +14,7 @@ Replace the result with a real screenshot once one is available.
 Usage:
     python tools/render-dialog.py                       both themes
     python tools/render-dialog.py --theme dark          one theme
+    python tools/render-dialog.py --dialog about        the About box only
     python tools/render-dialog.py --out docs/img        output directory
 """
 
@@ -245,6 +246,15 @@ class Canvas:
             self.d.text((x0 + self.px(9), y0 + self.px(4)), caption,
                         font=self.font, fill=self.pal["text"], anchor="lm")
 
+    def icon(self, rect, path):
+        """The application icon, from res/logo.png, scaled into its rect."""
+        x0, y0, x1, y1 = self.box(rect)
+        side = int(min(x1 - x0, y1 - y0))
+        if side <= 0 or not os.path.exists(path):
+            return
+        art = Image.open(path).convert("RGBA").resize((side, side), Image.LANCZOS)
+        self.img.paste(art, (int(x0), int(y0)), art)
+
     def _blend_at(self, y):
         t = max(0.0, min(1.0, (y - self.top) / max(1, self.h - self.top - 1)))
         return self._gradient(t)
@@ -332,9 +342,9 @@ class Canvas:
                          width=max(1, self.k // 2))
 
 
-def render(rc_path, theme, out_path):
+def render(rc_path, theme, out_path, dialog="IDD_FILTERKEYSSETTER_DIALOG"):
     rc_text = open(rc_path, encoding="utf-8-sig").read()
-    width, height, caption, controls = parse_dialog(rc_text, "IDD_FILTERKEYSSETTER_DIALOG")
+    width, height, caption, controls = parse_dialog(rc_text, dialog)
 
     pal = DARK if theme == "dark" else LIGHT
     c = Canvas(width, height, pal)
@@ -350,7 +360,9 @@ def render(rc_path, theme, out_path):
         kind, cid, rect, text = ctl["kind"], ctl["id"], ctl["rect"], ctl["text"]
         if kind == "GROUPBOX":
             continue
-        if kind == "EDITTEXT":
+        if kind == "ICON":
+            c.icon(rect, os.path.join(ROOT, "res", "logo.png"))
+        elif kind == "EDITTEXT":
             c.edit(rect, SAMPLE.get(cid, ""))
         elif kind in ("PUSHBUTTON", "DEFPUSHBUTTON"):
             c.button(rect, text, default=(kind == "DEFPUSHBUTTON"))
@@ -381,12 +393,22 @@ def main():
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--rc", default=os.path.join(ROOT, "FilterKeysSetter.rc"))
     ap.add_argument("--theme", choices=("dark", "light", "both"), default="both")
+    ap.add_argument("--dialog", choices=("main", "about", "both"), default="both")
     ap.add_argument("--out", default=os.path.join(ROOT, "docs", "img"))
     args = ap.parse_args()
 
+    dialogs = {
+        "main": ("IDD_FILTERKEYSSETTER_DIALOG", "dialog-%s.png"),
+        "about": ("IDD_ABOUTBOX", "about-%s.png"),
+    }
+    wanted = ("main", "about") if args.dialog == "both" else (args.dialog,)
+
     themes = ("dark", "light") if args.theme == "both" else (args.theme,)
     for theme in themes:
-        render(args.rc, theme, os.path.join(args.out, "dialog-%s.png" % theme))
+        for name in wanted:
+            dialog, pattern = dialogs[name]
+            render(args.rc, theme, os.path.join(args.out, pattern % theme),
+                   dialog)
     return 0
 
 

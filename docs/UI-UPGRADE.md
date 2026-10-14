@@ -317,8 +317,9 @@ reports and skips rather than guessing at MFC's own class hierarchy.
 theme palette:
 
 ```cmd
-python tools\render-dialog.py            :: both themes into docs\img
+python tools\render-dialog.py            :: both dialogs, both themes
 python tools\render-dialog.py --theme dark
+python tools\render-dialog.py --dialog about
 ```
 
 It shares its parser with the layout checker, so the geometry in
@@ -327,6 +328,20 @@ It shares its parser with the layout checker, so the geometry in
 next run. What it cannot show is the dialog font (Segoe UI is not available
 outside Windows) and the native chrome of the common controls. It is a layout
 preview and a stand-in for the README, not a substitute for a screenshot.
+
+The About box is drawn the same way, which is the only picture there is of
+the claim in the table at the top of this file that it follows the theme:
+
+![The About box in the dark theme](img/about-dark.png)
+
+![The About box in the light theme](img/about-light.png)
+
+Its icon is the real one -- `res/logo.png`, scaled into the rectangle the
+`ICON` statement gives it -- so the preview also shows whether the artwork
+survives at 20 by 20 dialog units. The *OK* button goes through
+`PaintThemedPushButton` like every other button in the program: the About
+box has its own two-line `NM_CUSTOMDRAW` handler and shares the painter,
+which is why it cannot drift away from the main window.
 
 ## Testing checklist
 
