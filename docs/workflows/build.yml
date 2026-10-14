@@ -37,8 +37,14 @@ jobs:
       - name: Error handling check
         run: python tools/check-error-handling.py
 
+      - name: Project file check
+        run: python tools/check-project.py
+
       - name: Documentation check
         run: python tools/check-docs.py
+
+      - name: Theme and palette check
+        run: python tools/check-theme.py
 
       - name: Checker self test
         run: python tools/selftest.py

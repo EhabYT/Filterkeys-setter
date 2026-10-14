@@ -1,7 +1,7 @@
 # Manual test plan
 
 Nothing in this repository has ever been compiled: there is no MSVC here.
-Six static checkers stand in for the compiler, but they cannot press a
+Seven static checkers stand in for the compiler, but they cannot press a
 button. This is the list to work through the first time a build runs, and
 after that before each release. `docs/RELEASE.md` carries the short version;
 this is the long one.
