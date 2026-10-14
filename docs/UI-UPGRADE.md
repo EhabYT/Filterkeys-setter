@@ -141,6 +141,28 @@ The theme preference is stored in a **separate** key,
 `HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme` (`REG_DWORD`, 0 = light,
 1 = dark), so it can never collide with the accessibility settings.
 
+### Which theme a first run opens in
+
+`CTheme::LoadPreference()` asks three questions in order, and stops at the
+first answer:
+
+1. **This program's own value.** Present only once the *Dark theme* box has
+   been ticked or cleared. An explicit choice is not something a system
+   setting should overrule later, so from then on Windows is not consulted.
+2. **What the user chose for Windows.** `AppsUseLightTheme` under
+   `HKCU\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize`,
+   which is what *Settings → Personalisation → Colours → Choose your default
+   app mode* writes. `0` means dark.
+3. **Dark**, which is the theme the application icon is built from, and the
+   answer on anything older than Windows 10 1809, where that value does not
+   exist.
+
+Because the whole chain is re-read in `RefreshThemeFromSystem()`, a machine
+with no stored preference also *follows* Windows: switching the app mode
+sends `WM_SETTINGCHANGE` with `ImmersiveColorSet`, and the dialog changes
+over with the rest of the desktop. One tick of the check box ends that and
+pins the choice.
+
 ## Migration checklist
 
 1. Pull the branch and open `FilterKeysSetter.sln` in Visual Studio 2022.

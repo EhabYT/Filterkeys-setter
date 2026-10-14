@@ -659,7 +659,7 @@ namespace
 		{ IDC_STATUS,
 		  _T("What Windows reports right now, which is not necessarily what this dialog shows until you press Apply.") },
 		{ IDC_APPLY, _T("Apply the settings without closing the window.") },
-		{ IDC_DARKTHEME, _T("Switch between the dark and the native light appearance.") },
+		{ IDC_DARKTHEME, _T("Switch between the dark and the light appearance. Until you do, the Windows app mode decides.") },
 	};
 }
 
@@ -759,7 +759,11 @@ void CFilterKeysSetterDlg::RefreshThemeFromSystem()
 	const bool bHighContrast = CTheme::IsHighContrast();
 
 	// SetMode() forces Light while high contrast is on, so the stored
-	// preference can simply be handed over unchanged.
+	// preference can simply be handed over unchanged. Re-reading it here
+	// is also what makes the window follow Windows: WM_SETTINGCHANGE
+	// arrives with "ImmersiveColorSet" when the app mode is switched, and
+	// LoadPreference() answers with the system's choice for as long as
+	// this program has none of its own.
 	m_theme.SetMode(CTheme::LoadPreference());
 
 	if (::IsWindow(m_chkDarkTheme.GetSafeHwnd())) {

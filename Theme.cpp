@@ -11,6 +11,37 @@ namespace
 	const TCHAR* const kSettingsKey = _T("Software\\FilterKeysSetter");
 	const TCHAR* const kThemeValue  = _T("Theme");
 
+	// Where Windows itself keeps the choice the user made in Settings ->
+	// Personalisation -> Colours. AppsUseLightTheme is 0 for dark, 1 for
+	// light, and is simply absent before Windows 10 1809.
+	const TCHAR* const kPersonalizeKey =
+		_T("Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize");
+	const TCHAR* const kAppsUseLightTheme = _T("AppsUseLightTheme");
+
+	// Reads a REG_DWORD, leaving the caller's default alone on any failure:
+	// a missing key, the wrong type, or a short read.
+	bool ReadDword(HKEY hRoot, const TCHAR* pszSubKey, const TCHAR* pszValue, DWORD& dwOut)
+	{
+		HKEY hKey = NULL;
+		if (::RegOpenKeyEx(hRoot, pszSubKey, 0, KEY_READ, &hKey) != ERROR_SUCCESS) {
+			return false;
+		}
+
+		DWORD dwType = 0;
+		DWORD dwRead = 0;
+		DWORD dwSize = sizeof(dwRead);
+		const LONG lResult = ::RegQueryValueEx(hKey, pszValue, NULL, &dwType,
+		                                       reinterpret_cast<LPBYTE>(&dwRead), &dwSize);
+		::RegCloseKey(hKey);
+
+		if (lResult != ERROR_SUCCESS || dwType != REG_DWORD || dwSize != sizeof(dwRead)) {
+			return false;
+		}
+
+		dwOut = dwRead;
+		return true;
+	}
+
 	// Palette taken from the application icon.
 	const ThemePalette kDarkPalette = {
 		RGB(0x2A, 0x4A, 0x7B),  // back top      #2A4A7B
@@ -87,22 +118,30 @@ CTheme::~CTheme()
 	}
 }
 
+bool CTheme::SystemPrefersDark()
+{
+	// Absent before Windows 10 1809, and absent on a machine where the
+	// user never touched the setting. Dark is the answer then: it is the
+	// theme the application icon is built from.
+	DWORD dwLight = 0;
+	if (!ReadDword(HKEY_CURRENT_USER, kPersonalizeKey, kAppsUseLightTheme, dwLight)) {
+		return true;
+	}
+	return dwLight == 0;
+}
+
 ThemeMode CTheme::LoadPreference()
 {
-	DWORD dwValue = 1;  // dark by default, matching the application icon
-	HKEY hKey = NULL;
-	if (::RegOpenKeyEx(HKEY_CURRENT_USER, kSettingsKey, 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
-		DWORD dwType = 0;
-		DWORD dwSize = sizeof(dwValue);
-		DWORD dwRead = 0;
-		if (::RegQueryValueEx(hKey, kThemeValue, NULL, &dwType,
-		                      reinterpret_cast<LPBYTE>(&dwRead), &dwSize) == ERROR_SUCCESS
-		    && dwType == REG_DWORD) {
-			dwValue = dwRead;
-		}
-		::RegCloseKey(hKey);
+	// Three steps, in this order: the user's own choice in this program,
+	// then the choice they made for Windows, then dark. Once the check box
+	// has been ticked or cleared once, SavePreference() writes our value
+	// and this program stops following Windows -- an explicit choice is
+	// not something a system setting should overrule later.
+	DWORD dwValue = 0;
+	if (ReadDword(HKEY_CURRENT_USER, kSettingsKey, kThemeValue, dwValue)) {
+		return (dwValue == 0) ? ThemeMode::Light : ThemeMode::Dark;
 	}
-	return (dwValue == 0) ? ThemeMode::Light : ThemeMode::Dark;
+	return SystemPrefersDark() ? ThemeMode::Dark : ThemeMode::Light;
 }
 
 void CTheme::SavePreference(ThemeMode mode)

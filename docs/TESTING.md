@@ -43,11 +43,18 @@ covers the rest.
       DLL was named.
 - [ ] The window title is *FilterKeys Setter*, the task bar icon is the
       application icon rather than the generic one.
-- [ ] The dialog opens in the **dark** theme on a first run, with a dark
-      title bar.
+- [ ] On a machine that has never run this program -- delete
+      `HKCU\Software\FilterKeysSetter` first -- the dialog opens in the
+      theme Windows is set to: dark under *Settings → Personalisation →
+      Colours → Choose your default app mode: Dark*, light under *Light*.
+      With no such setting at all (before Windows 10 1809) it opens dark.
 
 ## 2. Theme
 
+- [ ] With no stored preference, switching the Windows app mode while
+      the dialog is open changes the dialog over with it. After ticking or
+      clearing *Dark theme* once, the same switch leaves it alone: the
+      explicit choice wins.
 - [ ] Clearing *Dark theme* switches immediately, title bar included, to
       the light theme: a white background drifting to pale blue at the
       foot, white fields, navy text, no grey anywhere.

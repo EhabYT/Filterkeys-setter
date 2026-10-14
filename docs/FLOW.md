@@ -74,8 +74,11 @@ flowchart TD
 
     hc -- yes --> sys["System palette<br/>IsBranded() = false"]
     hc -- no --> pref{"HKCU Software\\FilterKeysSetter\\Theme"}
-    pref -- "1 (default)" --> dark["Dark palette<br/>deep end of the spectrum"]
+    pref -- 1 --> dark["Dark palette<br/>deep end of the spectrum"]
     pref -- 0 --> light["Light palette<br/>luminous end, white canvas"]
+    pref -- "not set yet" --> win{"AppsUseLightTheme<br/>the Windows app mode"}
+    win -- "0 or absent" --> dark
+    win -- 1 --> light
 
     sys --> handback["Every painter returns false<br/>Windows draws everything<br/>edit frames restored"]
 

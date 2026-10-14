@@ -15,6 +15,10 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 - **Two themes from one palette**, the one the application icon is built from: dark uses its deep end (navy background, `#1D5188` surfaces, `#5D9CD6` accent), light uses its luminous end on a white canvas (`#FFFFFF` to `#D6E8F7`, midnight navy text, `#3778B5` accent). The choice is remembered. Windows high contrast overrides both and hands every control back to Windows, live.
 - **Sliders** for repeat delay and repeat rate, in sync with the numeric fields; the edit box stays authoritative outside the slider range.
 - **A status line** showing what Windows is actually using, which is not necessarily what the fields contain.
+- **A first run follows Windows.** With no stored preference the dialog
+  opens in the app mode Windows is set to, and follows it while it is
+  switched; ticking or clearing *Dark theme* once pins the choice from
+  then on.
 - **Tool tips on 28 controls**, including the three read-outs whose meaning is least obvious.
 - **Alt accelerators on all 22 interactive controls** — the dialog previously had none at all.
 - **Segoe UI 9 pt** instead of the Windows XP era `MS Shell Dlg`, system DPI awareness, and a new application icon and logo.

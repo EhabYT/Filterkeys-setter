@@ -48,8 +48,15 @@ public:
 	CTheme(const CTheme&) = delete;
 	CTheme& operator=(const CTheme&) = delete;
 
-	// Reads the persisted choice from the registry (defaults to Dark).
+	// The theme to open in: this program's own stored choice if there is
+	// one, otherwise whatever the user chose for Windows, otherwise Dark.
 	static ThemeMode LoadPreference();
+
+	// What Windows itself is set to -- Settings -> Personalisation ->
+	// Colours -> "Choose your default app mode". True (dark) where the
+	// setting does not exist, which is every version before Windows 10
+	// 1809.
+	static bool SystemPrefersDark();
 	static void SavePreference(ThemeMode mode);
 
 	// True while Windows runs one of the high contrast schemes. The custom
