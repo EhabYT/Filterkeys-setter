@@ -686,6 +686,11 @@ Together they mean a colour cannot enter the program without being
 written down, and cannot be written down without being used. The self
 test adds a grey to `Theme.cpp` and insists the sheet notices.
 
+`tools/render-palette.py` draws the sheet at the top of that file out of
+the same two initialisers, contrast figures and all, so the picture of the
+palette is generated rather than maintained. A palette sheet that is drawn
+by hand is just a third place to forget.
+
 `#E0E0E0` went in the same round. It is replaced by the brand's outline
 tone `#D6E8F7`, which is not a compromise: 7.1:1 against the lightest
 band of the dark background where the grey managed 6.7:1. The two

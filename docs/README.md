@@ -21,3 +21,5 @@ Two more things worth knowing where to find:
 The screenshots under `img/` are **renderings** produced by
 `tools/render-dialog.py` from the resource script, not photographs of a
 running program. No machine in this project's history has compiled it yet.
+`img/palette.png` next to them is not a rendering of anything -- it is the
+palette itself, drawn out of `Theme.cpp` by `tools/render-palette.py`.
