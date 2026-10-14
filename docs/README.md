@@ -16,6 +16,10 @@ Two more things worth knowing where to find:
 
 - `tools/check-all.py` runs every checker with one verdict at the end;
   each checker explains itself in its own docstring.
+- The pictures under `img/` are generated, and `tools/check-images.py`
+  renders them again to confirm the checked-in files still match the
+  sources. It needs Pillow, and skips itself politely where that is
+  missing.
 - `../CHANGELOG.md` holds the release notes, and the entry for the current
   version is also the text of the GitHub release.
 

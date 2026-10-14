@@ -881,7 +881,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **51 mutations**.
+Both are covered by the self test, which now runs **53 mutations**.
 
 ## Handler signatures
 
@@ -1059,7 +1059,7 @@ Expected output: `10 document(s), 0 problem(s)`.
 
 ## Running them all at once
 
-Seven checkers plus a self test are easy to run incompletely, so
+Eight checkers plus a self test are easy to run incompletely, so
 `tools/check-all.py` runs them in a fixed order -- cheapest and most
 specific first, the slow self test last -- indents each one's own output
 under its name and ends with a single line:
@@ -1092,19 +1092,20 @@ nobody would notice that they had stopped checking.
 python tools\selftest.py -v
 ```
 
-It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **51 mutations** one at a time --
+It copies the tree into a scratch directory, confirms all eight checkers are
+clean on the untouched copy, then applies **53 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
 tip on a static without `SS_NOTIFY`, two resource symbols sharing a number,
-an installer version left behind, a truncated icon file, and so on. Each one has to make the right
+an installer version left behind, a truncated icon file, a generated
+picture left behind by a change to the palette, and so on. Each one has to make the right
 checker exit non-zero *and* print the expected sentence; afterwards the file
 is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `51 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `53 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -1233,10 +1234,11 @@ Users can clear their own preference by deleting
 ## Still open
 
 `.github/workflows/build.yml` replaces the unusable CMake-on-Ubuntu starter
-workflow with all seven static checks on Ubuntu --
+workflow with all eight static checks on Ubuntu --
 `check-dialog-layout.py`, `check-message-map.py`, `check-resources.py`,
 `check-error-handling.py`, `check-project.py`, `check-docs.py` and
-`check-theme.py`, followed by `selftest.py` -- plus MSBuild on both
+`check-theme.py` and `check-images.py`, followed by `selftest.py` --
+plus MSBuild on both
 `windows-2022` (VS 2022, v143) and `windows-2025` (VS 2026, v145), for
 `Win32` and `x64`. It could not be
 pushed: GitHub rejects workflow files from an app without the `workflows`
@@ -1252,5 +1254,5 @@ That runs all seven. The expected output is two `ok` lines from
 `check-dialog-layout.py`, `0 problem(s)` with a single note about
 `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`, `3 file(s), 0 problem(s)`,
 `15 reference(s), 0 problem(s)` with three notes, `10 document(s),
-0 problem(s)`, `51 case(s), 0 failure(s)` and the closing line
-`all 8 checks passed`. Anything else is a regression.
+0 problem(s)`, `53 case(s), 0 failure(s)` and the closing line
+`all 9 checks passed`. Anything else is a regression.

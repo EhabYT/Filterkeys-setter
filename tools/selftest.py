@@ -43,6 +43,7 @@ ERRORS = "check-error-handling.py"
 PROJECT = "check-project.py"
 DOCS = "check-docs.py"
 THEME = "check-theme.py"
+IMAGES = "check-images.py"
 
 # (name, checker, file, text to replace, replacement, expected in the output)
 CASES = [
@@ -338,7 +339,7 @@ def run(checker, sandbox):
     # Always the copy of the checker inside the sandbox, so that editing a
     # checker is covered by this test as well.
     script = os.path.join(sandbox, "tools", checker)
-    if checker in (RESOURCES, PROJECT, DOCS, THEME):
+    if checker in (RESOURCES, PROJECT, DOCS, THEME, IMAGES):
         argv = [sys.executable, script, sandbox]
     elif checker == LAYOUT:
         argv = [sys.executable, script, os.path.join(sandbox, RC)]
@@ -346,6 +347,13 @@ def run(checker, sandbox):
         argv = [sys.executable, script]
     done = subprocess.run(argv, cwd=sandbox, capture_output=True, text=True)
     return done.returncode, done.stdout + done.stderr
+
+
+def pillow_available():
+    """The picture cases need the drawing library the generators need."""
+    probe = subprocess.run([sys.executable, "-c", "import PIL"],
+                           capture_output=True, text=True)
+    return probe.returncode == 0
 
 
 def copy_tree(destination):
@@ -367,7 +375,8 @@ def main():
         copy_tree(sandbox)
 
         # A mutation test only means something if the baseline is clean.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS, THEME):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS,
+                        THEME, IMAGES):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("baseline: %s already fails:\n%s"
@@ -417,8 +426,39 @@ def main():
             elif verbose:
                 print("ok  %-48s %s" % (name, RESOURCES))
 
+        # The pictures are binary and only checkable where Pillow is
+        # installed, so they get their own pair of cases and are skipped
+        # rather than failed on a machine without it.
+        if pillow_available():
+            sheet = os.path.join(sandbox, "docs", "img", "palette.png")
+            original = open(sheet, "rb").read()
+            for name, broken, expected in (
+                    ("picture left behind by a palette change",
+                     original[:len(original) // 2], "STALE"),
+                    ("picture deleted but still linked", None, "MISSING")):
+                ran += 1
+                if broken is None:
+                    os.remove(sheet)
+                else:
+                    with open(sheet, "wb") as handle:
+                        handle.write(broken)
+                code, output = run(IMAGES, sandbox)
+                with open(sheet, "wb") as handle:
+                    handle.write(original)
+                if code == 0:
+                    failures.append("%s: %s did not notice" % (name, IMAGES))
+                elif expected not in output:
+                    failures.append('%s: complained, but not about "%s":\n%s'
+                                    % (name, expected, output.strip()))
+                elif verbose:
+                    print("ok  %-48s %s" % (name, IMAGES))
+        elif verbose:
+            print("skip  picture cases                              "
+                  "Pillow is not installed")
+
         # Nothing may be left behind in the scratch copy.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS, THEME):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS,
+                        THEME, IMAGES):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("after restoring, %s fails:\n%s"

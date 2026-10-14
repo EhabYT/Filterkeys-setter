@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Run every checker in this folder and summarise the result.
 
-Seven checkers plus their self test is a lot to remember and easy to run
+Eight checkers plus their self test is a lot to remember and easy to run
 incompletely. This runs all of them in a fixed order -- cheapest and most
 specific first -- prints each one's own output underneath its name, and
 ends with a single verdict.
 
-    python3 tools/check-all.py          the seven checkers and the self test
+    python3 tools/check-all.py          the eight checkers and the self test
     python3 tools/check-all.py --quick  skip the self test
 
 The self test is last because it is the slow one: it copies the tree and
@@ -31,6 +31,7 @@ CHECKERS = [
     ("check-project.py", "project files, build scripts, installer"),
     ("check-docs.py", "links, headings and file names in the docs"),
     ("check-theme.py", "the palette as the only source of colour"),
+    ("check-images.py", "the generated pictures against their sources"),
 ]
 
 SELFTEST = ("selftest.py", "the checkers themselves, by breaking the tree")

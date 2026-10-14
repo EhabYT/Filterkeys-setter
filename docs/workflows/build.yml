@@ -46,6 +46,13 @@ jobs:
       - name: Theme and palette check
         run: python tools/check-theme.py
 
+      - name: Generated picture check
+        # Pillow is what the two generators draw with; without it the
+        # checker skips itself, which would quietly stop checking.
+        run: |
+          python -m pip install --quiet pillow
+          python tools/check-images.py
+
       - name: Checker self test
         run: python tools/selftest.py
 

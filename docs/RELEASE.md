@@ -9,8 +9,8 @@ done from the static checks alone.
 python tools\check-all.py
 ```
 
-That is the seven checkers and the self test, ending in
-`all 8 checks passed`. Anything else is a reason not to cut the release.
+That is the eight checkers and the self test, ending in
+`all 9 checks passed`. Anything else is a reason not to cut the release.
 
 `check-resources.py` is the one that matters most here: it compares the
 version in `VERSIONINFO`, the about box, the installer `ProductVersion` and

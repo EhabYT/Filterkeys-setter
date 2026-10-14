@@ -342,7 +342,38 @@ class Canvas:
                          width=max(1, self.k // 2))
 
 
-def render(rc_path, theme, out_path, dialog="IDD_FILTERKEYSSETTER_DIALOG"):
+def emit(img, out_path, check=False):
+    """Writes the picture, or -- with check -- says whether it is current.
+
+    The generators are deterministic: the same sources produce the same
+    bytes. That makes "is the checked-in picture still the picture these
+    sources describe?" a byte comparison, which is what --check asks.
+    Returns True when the file on disk is what this run would have written.
+    """
+    import io as _io
+    buffer = _io.BytesIO()
+    img.save(buffer, format="PNG")
+    fresh = buffer.getvalue()
+
+    if check:
+        if not os.path.exists(out_path):
+            print("%s  MISSING -- run this script without --check" % out_path)
+            return False
+        if open(out_path, "rb").read() != fresh:
+            print("%s  STALE -- the sources have moved on, re-run this script"
+                  % out_path)
+            return False
+        print("%s  current  (%d x %d)" % (out_path, img.width, img.height))
+        return True
+
+    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
+    with open(out_path, "wb") as handle:
+        handle.write(fresh)
+    print("%s  (%d x %d)" % (out_path, img.width, img.height))
+    return True
+
+def render(rc_path, theme, out_path, dialog="IDD_FILTERKEYSSETTER_DIALOG",
+           check=False):
     rc_text = open(rc_path, encoding="utf-8-sig").read()
     width, height, caption, controls = parse_dialog(rc_text, dialog)
 
@@ -383,9 +414,7 @@ def render(rc_path, theme, out_path, dialog="IDD_FILTERKEYSSETTER_DIALOG"):
     c.title_bar(caption)
 
     img = c.img.resize((c.w // SS, c.h // SS), Image.LANCZOS)
-    os.makedirs(os.path.dirname(out_path) or ".", exist_ok=True)
-    img.save(out_path)
-    print("%s  (%d x %d)" % (out_path, img.width, img.height))
+    return emit(img, out_path, check)
 
 
 def main():
@@ -395,6 +424,8 @@ def main():
     ap.add_argument("--theme", choices=("dark", "light", "both"), default="both")
     ap.add_argument("--dialog", choices=("main", "about", "both"), default="both")
     ap.add_argument("--out", default=os.path.join(ROOT, "docs", "img"))
+    ap.add_argument("--check", action="store_true",
+                    help="write nothing; fail if a picture is out of date")
     args = ap.parse_args()
 
     dialogs = {
@@ -404,12 +435,15 @@ def main():
     wanted = ("main", "about") if args.dialog == "both" else (args.dialog,)
 
     themes = ("dark", "light") if args.theme == "both" else (args.theme,)
+    current = True
     for theme in themes:
         for name in wanted:
             dialog, pattern = dialogs[name]
-            render(args.rc, theme, os.path.join(args.out, pattern % theme),
-                   dialog)
-    return 0
+            if not render(args.rc, theme,
+                          os.path.join(args.out, pattern % theme),
+                          dialog, args.check):
+                current = False
+    return 0 if current else 1
 
 
 if __name__ == "__main__":

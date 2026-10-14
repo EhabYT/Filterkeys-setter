@@ -103,7 +103,7 @@ both or neither. The colours all come from [BRAND.md](BRAND.md).
 flowchart LR
     edit([Edit a file]) --> all["tools/check-all.py"]
 
-    subgraph checks["Seven checkers, under a second, no toolchain"]
+    subgraph checks["Eight checkers, under a second, no toolchain"]
         c1["check-dialog-layout.py"]
         c2["check-message-map.py"]
         c3["check-resources.py"]
@@ -111,11 +111,12 @@ flowchart LR
         c5["check-project.py"]
         c6["check-docs.py"]
         c7["check-theme.py"]
+        c8["check-images.py"]
     end
 
     all --> checks
-    checks --> self["selftest.py<br/>51 mutations, each has to be caught"]
-    self --> verdict{"all 8 checks passed?"}
+    checks --> self["selftest.py<br/>53 mutations, each has to be caught"]
+    self --> verdict{"all 9 checks passed?"}
     verdict -- no --> edit
     verdict -- yes --> build["tools/build.cmd<br/>Win32 and x64, needs MSVC + MFC"]
 
@@ -127,6 +128,6 @@ flowchart LR
 
 Two things this diagram is honest about. The build step has never run:
 there is no MSVC in the environment these changes were written in, which
-is why there are seven checkers in front of it. And the previews under
+is why there are eight checkers in front of it. And the previews under
 `img/` come from `tools/render-dialog.py`, not from a running program --
 the first real screenshot is still owed.
