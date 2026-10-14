@@ -668,6 +668,39 @@ implementation and were corrected at the same time -- the indicator face
 of a ticked check box is the surface colour, not the accent, the tick is
 drawn in the text colour, and a radio dot likewise.
 
+## The checker for the one trap with no warning
+
+`tools/check-theme.py` is the seventh checker, and it exists for a single
+C++ behaviour: a `ThemePalette` is filled by an aggregate initialiser, and
+an aggregate initialiser with too few entries is **legal**. Add a field to
+the struct, extend one of the two palettes and forget the other, and the
+missing colour is value-initialised -- zero, which as a `COLORREF` is
+black. No warning at any level, and black is plausible enough in a dark
+theme to survive review.
+
+It counts the entries against the fields and says so:
+
+```
+Theme.cpp:15: kDarkPalette sets 9 of the 10 fields in ThemePalette; the
+rest are silently zero, which is black
+```
+
+Three more rules come with it, all of them things the compiler is happy
+with:
+
+* **`RGB()` only in `Theme.cpp`.** A colour hard-coded in a painter
+  belongs to no palette, so no theme switch reaches it.
+* **`GetSysColor` only in `MakeSystemPalette` and `ApplyToToolTip`.**
+  Those two are the high contrast fallback; anywhere else a Windows grey
+  walks back into a branded dialog.
+* **No grey stock brushes.** This caught a real one: `Rebuild()` fell back
+  to `DKGRAY_BRUSH` and `GRAY_BRUSH` when `CreateSolidBrush` fails. It
+  now falls back to black or white depending on the theme -- still stock
+  objects, because allocating a brush is what just failed, but no longer
+  grey.
+* Both palettes must list the same roles in the same order, which is also
+  what lets `tools/render-palette.py` label the sheet.
+
 ## A colour sheet the compiler cannot ignore
 
 Two colours in the code were not part of the identity at all: the dark
@@ -822,7 +855,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **48 mutations**.
+Both are covered by the self test, which now runs **51 mutations**.
 
 ## Handler signatures
 
@@ -1000,7 +1033,7 @@ Expected output: `9 document(s), 0 problem(s)`.
 
 ## Running them all at once
 
-Six checkers plus a self test are easy to run incompletely, so
+Seven checkers plus a self test are easy to run incompletely, so
 `tools/check-all.py` runs them in a fixed order -- cheapest and most
 specific first, the slow self test last -- indents each one's own output
 under its name and ends with a single line:
@@ -1010,7 +1043,7 @@ ok    check-dialog-layout.py     dialog geometry, captions, accelerators
 ...
 FAIL  check-docs.py              links, headings and file names in the docs
 ...
-2 of 7 failed: check-docs.py, selftest.py
+2 of 8 failed: check-docs.py, selftest.py
 ```
 
 `--quick` leaves out the self test, which is the only one that takes more
@@ -1034,7 +1067,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **48 mutations** one at a time --
+clean on the untouched copy, then applies **51 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -1045,7 +1078,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `48 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `51 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -1179,5 +1212,5 @@ That runs all seven. The expected output is two `ok` lines from
 `check-dialog-layout.py`, `0 problem(s)` with a single note about
 `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`, `3 file(s), 0 problem(s)`,
 `15 reference(s), 0 problem(s)` with three notes, `9 document(s),
-0 problem(s)`, `48 case(s), 0 failure(s)` and the closing line
-`all 7 checks passed`. Anything else is a regression.
+0 problem(s)`, `51 case(s), 0 failure(s)` and the closing line
+`all 8 checks passed`. Anything else is a regression.

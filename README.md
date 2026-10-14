@@ -122,9 +122,10 @@ stays grey and nothing here has been compiled in CI.
 
 ## Checks that do run anywhere
 
-Seven Python scripts stand in for the compiler while no toolchain is
-available -- six checkers and a self test that verifies the checkers. They
-need nothing but a Python 3 install and take under a second together:
+Eight Python scripts stand in for the compiler while no toolchain is
+available -- seven checkers and a self test that verifies the checkers.
+They need nothing but a Python 3 install and take under a second
+together:
 
 ```cmd
 python tools\check-dialog-layout.py    :: geometry, captions, accelerators, tab stops
@@ -133,8 +134,9 @@ python tools\check-resources.py        :: resource IDs, the icon container, vers
 python tools\check-error-handling.py   :: Win32 results that are thrown away
 python tools\check-project.py          :: project references, configurations, precompiled header
 python tools\check-docs.py             :: links, headings and file names in the documentation
-python tools\selftest.py               :: breaks the sources on purpose to test the six above
-                                       :: 48 mutations, each one has to be caught
+python tools\check-theme.py            :: the palette as the only source of colour in the code
+python tools\selftest.py               :: breaks the sources on purpose to test the seven above
+                                       :: 51 mutations, each one has to be caught
 python tools\check-all.py              :: all of the above, with one verdict at the end
 ```
 

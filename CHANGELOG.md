@@ -41,10 +41,10 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
   platforms, copies them to `release\`, prints sizes and SHA-256 sums and,
   given a tag, uploads them. The procedure is in
   [docs/RELEASE.md](docs/RELEASE.md).
-- Six static checkers run on any machine with Python -- dialog layout,
-  message maps, resources, error handling, project files and the
-  documentation itself. `tools\check-all.py` runs the lot with one verdict,
-  and `tools\selftest.py` verifies them by breaking the repository in 48
+- Seven static checkers run on any machine with Python -- dialog layout,
+  message maps, resources, error handling, project files, the
+  documentation itself and the theme. `tools\check-all.py` runs the lot with one verdict,
+  and `tools\selftest.py` verifies them by breaking the repository in 51
   ways and insisting each break is caught. One of those rules reads two
   files at once: a control that is custom drawn must not also be detached
   from the visual style in `Theme.cpp`, because a detached control sends

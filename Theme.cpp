@@ -174,8 +174,13 @@ void CTheme::Rebuild()
 		if (m_brushSurface != NULL) {
 			::DeleteObject(m_brushSurface);
 		}
-		m_brushBack = static_cast<HBRUSH>(::GetStockObject(DKGRAY_BRUSH));
-		m_brushSurface = static_cast<HBRUSH>(::GetStockObject(GRAY_BRUSH));
+		// Stock objects, because creating a brush is what just failed.
+		// Black under the dark theme and white under the light one keeps
+		// the dialog legible and keeps grey out of the palette; they are
+		// also the two stock brushes closest to what they replace.
+		const int stock = IsDark() ? BLACK_BRUSH : WHITE_BRUSH;
+		m_brushBack = static_cast<HBRUSH>(::GetStockObject(stock));
+		m_brushSurface = static_cast<HBRUSH>(::GetStockObject(stock));
 	}
 }
 

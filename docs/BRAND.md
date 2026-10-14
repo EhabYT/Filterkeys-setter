@@ -14,6 +14,10 @@ palettes in `Theme.cpp`, contrast figures included, so it shows what the
 program uses rather than what this file would like it to use. Re-run it
 after any colour change.
 
+`tools/check-theme.py` holds the code to the other half of it: colours
+are named as roles rather than written out, system colours stay in the
+high contrast fallback, and neither palette may quietly lose a field.
+
 ## The spectrum
 
 One gradient, from luminous sky blue down to near-black navy. Nothing in

@@ -33,6 +33,7 @@ HDR = "FilterKeysSetterDlg.h"
 RES = "resource.h"
 VDPROJ = os.path.join("FilterKeysSetter.Setup", "FilterKeysSetter.Setup.vdproj")
 VCXPROJ = "FilterKeysSetter.vcxproj"
+HDR_THEME = "Theme.h"
 SLN = "FilterKeysSetter.sln"
 
 LAYOUT = "check-dialog-layout.py"
@@ -41,6 +42,7 @@ RESOURCES = "check-resources.py"
 ERRORS = "check-error-handling.py"
 PROJECT = "check-project.py"
 DOCS = "check-docs.py"
+THEME = "check-theme.py"
 
 # (name, checker, file, text to replace, replacement, expected in the output)
 CASES = [
@@ -120,6 +122,22 @@ CASES = [
      "if (!theme.IsBranded() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {\n\t\t\treturn false;\n\t\t}\n\n\t\tCDC* pDC = CDC::FromHandle(pcd->hdc);\n\t\tCWnd* pBox",
      "if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {\n\t\t\treturn false;\n\t\t}\n\n\t\tCDC* pDC = CDC::FromHandle(pcd->hdc);\n\t\tCWnd* pBox",
      "asks IsDark()"),
+
+    # -- check-theme.py ---------------------------------------------------
+    ("field added to ThemePalette but not to both palettes", THEME, HDR_THEME,
+     "\tCOLORREF clrTextDisabled;   // greyed-out controls",
+     "\tCOLORREF clrTextDisabled;   // greyed-out controls\n\tCOLORREF clrAdded;",
+     "silently zero, which is black"),
+
+    ("colour hard-coded in a painter instead of named as a role", THEME, DLG,
+     "pDC->FillSolidRect(rcBox, clrFace);",
+     "pDC->FillSolidRect(rcBox, RGB(0x80, 0x80, 0x80));",
+     "belongs to no palette"),
+
+    ("system colour read outside the high contrast fallback", THEME, "Theme.cpp",
+     "m_brushBack = ::CreateSolidBrush(m_palette.clrBackTop);",
+     "m_brushBack = ::CreateSolidBrush(::GetSysColor(COLOR_3DFACE));",
+     "high contrast fallback only"),
 
     # -- check-project.py -------------------------------------------------
     ("project references a file that is gone", PROJECT, VCXPROJ,
@@ -320,7 +338,7 @@ def run(checker, sandbox):
     # Always the copy of the checker inside the sandbox, so that editing a
     # checker is covered by this test as well.
     script = os.path.join(sandbox, "tools", checker)
-    if checker in (RESOURCES, PROJECT, DOCS):
+    if checker in (RESOURCES, PROJECT, DOCS, THEME):
         argv = [sys.executable, script, sandbox]
     elif checker == LAYOUT:
         argv = [sys.executable, script, os.path.join(sandbox, RC)]
@@ -349,7 +367,7 @@ def main():
         copy_tree(sandbox)
 
         # A mutation test only means something if the baseline is clean.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS, THEME):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("baseline: %s already fails:\n%s"
@@ -400,7 +418,7 @@ def main():
                 print("ok  %-48s %s" % (name, RESOURCES))
 
         # Nothing may be left behind in the scratch copy.
-        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS):
+        for checker in (LAYOUT, MAP, RESOURCES, ERRORS, PROJECT, DOCS, THEME):
             code, output = run(checker, sandbox)
             if code != 0:
                 failures.append("after restoring, %s fails:\n%s"
