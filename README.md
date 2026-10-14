@@ -17,12 +17,13 @@ entry for the current version is also the text of its GitHub release.
 Releases can be built by GitHub rather than by hand -- see
 [docs/workflows/](docs/workflows/README.md).
 
-* 1.11 2026-10-07 Dark theme with repeat sliders, tool tips on every setting,
-  Alt accelerators on every control, Segoe UI dialog font, system DPI
-  awareness, new application icon and logo; several failure paths fixed that
-  silently zeroed the settings when a system read failed; MFC Feature Pack
-  headers dropped, installer upgraded to a proper major upgrade, builds with
-  both Visual Studio 2022 and Visual Studio 2026
+* 1.11 2026-10-07 Dark and light themes cut from one palette and painted by
+  the dialog itself, repeat sliders, tool tips on every setting, Alt
+  accelerators on every control, Segoe UI dialog font, system DPI awareness,
+  new application icon and logo; several failure paths fixed that silently
+  zeroed the settings when a system read failed; MFC Feature Pack headers
+  dropped, installer upgraded to a proper major upgrade, builds with both
+  Visual Studio 2022 and Visual Studio 2026
 * 1.10 2024-01-28 No changes - Visual Studio 2022 build
 * 1.02 2013-10-30 Soarer's release
 
@@ -193,9 +194,18 @@ row fills the dialog from the current system state, the registry, the standard
 keyboard control panel values, the Windows defaults, or the values that were
 active when the program started.
 
+The About box follows the same theme, and the palette behind both is drawn
+straight out of `Theme.cpp`:
+
+| About box | Palette |
+| --- | --- |
+| <img src="docs/img/about-dark.png" width="380" alt="About box in the dark theme"> | <img src="docs/img/palette.png" width="380" alt="The palette of both themes"> |
+
 > **About these two pictures:** they are *rendered* from `FilterKeysSetter.rc`
 > and the palette in `Theme.cpp` by `tools/render-dialog.py` -- they are not
 > screenshots of a running program. Every control sits exactly where the
 > resource script puts it, but the dialog font is substituted and the native
 > control chrome is only approximated. They will be replaced with real
-> screenshots once a build is available.
+> screenshots once a build is available. The palette sheet is not a
+> rendering of anything: `tools/render-palette.py` reads the two palettes
+> out of `Theme.cpp` and draws them, contrast ratios included.
