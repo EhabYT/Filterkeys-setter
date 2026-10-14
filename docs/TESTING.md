@@ -100,6 +100,10 @@ covers the rest.
 - [ ] The arrow keys move between the two radio buttons, and `Tab` leaves
       the pair rather than cycling inside it.
 - [ ] `Esc` closes without applying, `Enter` behaves as *OK*.
+- [ ] With Narrator running, typing a new *Repeat rate* makes it read the
+      new *(x.x per second)* out, and pressing *Apply* makes it read the
+      status line -- in both cases without the focus having moved. Typing
+      a digit that does not change the value says nothing.
 
 ## 4. Sliders and fields
 

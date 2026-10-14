@@ -404,9 +404,43 @@ which is why it cannot drift away from the main window.
 
 - [ ] Tab reaches every control; focus is always visible
 - [ ] Narrator announces a meaningful name for each edit box and both sliders
+- [ ] Narrator reports the status line, the characters per second and the
+      flags value when they change, without the focus moving
 - [ ] Sliders respond to arrow keys, Page Up/Down, Home/End
 - [ ] Tooltips appear on hover and stay long enough to read
 - [ ] Accesskeys and Esc/Enter still behave
+
+## Three labels nobody was told about
+
+The dialog has three read-outs that are not controls anybody can reach:
+the status line, *(x.x per second)* next to the repeat rate, and the flags
+value. They are statics, so they are not in the tab order, so a screen
+reader walks past them -- and the one thing they exist for is to change
+while the user is doing something else.
+
+`CFilterKeysSetterDlg::SetReadout()` is now the only way their text is
+written. It does two things beyond `SetWindowText`:
+
+```cpp
+if (strCurrent == strText) {
+	return;                       // nothing changed, say nothing, paint nothing
+}
+
+label.SetWindowText(strText);
+::NotifyWinEvent(EVENT_OBJECT_NAMECHANGE, label.GetSafeHwnd(),
+                 OBJID_CLIENT, CHILDID_SELF);
+```
+
+`EVENT_OBJECT_NAMECHANGE` is the MSAA notification for *this object is
+still here, its name is different now*, and a static's name is its text.
+It costs one call and needs no UI Automation provider, no live-region
+property and no extra dependency.
+
+The comparison in front of it is not a stray optimisation. The
+characters-per-second label is rewritten on every keystroke in *Repeat
+rate*, usually with the identical string; announcing an unchanged value
+is worse than saying nothing, and the repaint that came with it was
+wasted too.
 
 ## Push buttons in the dark theme
 

@@ -1111,7 +1111,7 @@ void CFilterKeysSetterDlg::UpdateFlagVal()
 	// The raw number is what the registry stores, so keep it visible -- but
 	// show the hex form too, which is how the FKF_* constants are documented.
 	s.Format(_T("Flags: %u (0x%02X)"), dwFlags, dwFlags);
-	m_staticFlagVal.SetWindowText(s);
+	SetReadout(m_staticFlagVal, s);
 }
 
 // 122 and 59 were written as plain numbers; spelling them out costs nothing
@@ -1325,7 +1325,33 @@ void CFilterKeysSetterDlg::UpdateStatus()
 		s = _T("Current FilterKeys state could not be read");
 	}
 
-	m_staticStatus.SetWindowText(s);
+	SetReadout(m_staticStatus, s);
+}
+
+// A static control is not in the tab order, so a screen reader passes it
+// by and never reports that its text changed -- which is precisely what
+// these three labels exist to say. EVENT_OBJECT_NAMECHANGE is the
+// notification for "this object is still here, its name is different now",
+// and a static's name is its text.
+//
+// The comparison in front of it is not an optimisation afterthought: the
+// characters-per-second label is rewritten on every keystroke, and
+// announcing an unchanged value, or repainting it, is worse than useless.
+void CFilterKeysSetterDlg::SetReadout(CWnd& label, const CString& strText)
+{
+	if (!::IsWindow(label.GetSafeHwnd())) {
+		return;
+	}
+
+	CString strCurrent;
+	label.GetWindowText(strCurrent);
+	if (strCurrent == strText) {
+		return;
+	}
+
+	label.SetWindowText(strText);
+	::NotifyWinEvent(EVENT_OBJECT_NAMECHANGE, label.GetSafeHwnd(),
+	                 OBJID_CLIENT, CHILDID_SELF);
 }
 
 void CFilterKeysSetterDlg::UpdateCharsPerSec()
@@ -1339,7 +1365,7 @@ void CFilterKeysSetterDlg::UpdateCharsPerSec()
 	else {
 		s = _T("(0 per second)");
 	}
-	m_staticCharsPerSec.SetWindowText(s);
+	SetReadout(m_staticCharsPerSec, s);
 	SyncSliderFromEdit(m_sliderRepeat, m_editRepeat);
 }
 

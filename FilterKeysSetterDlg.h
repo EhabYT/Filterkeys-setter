@@ -33,6 +33,11 @@ protected:
 	void UpdateControls();
 	void UpdateStatus();
 
+	// Writes a read-out's text and tells the accessibility layer about it.
+	// Three labels in this dialog say things nobody is told otherwise:
+	// the status line, the characters per second and the flags value.
+	static void SetReadout(CWnd& label, const CString& strText);
+
 	// Theming
 	void ApplyTheme();
 	void ApplyThemeToChildren();
