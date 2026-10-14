@@ -48,15 +48,23 @@ covers the rest.
 
 ## 2. Theme
 
-- [ ] Clearing *Dark theme* switches to the native light look immediately,
-      including the title bar.
+- [ ] Clearing *Dark theme* switches immediately, title bar included, to
+      the light theme: a white background drifting to pale blue at the
+      foot, white fields, navy text, no grey anywhere.
+- [ ] The light theme is drawn by the program too, so the same checks
+      apply to it: nothing left in the system grey, group box captions
+      not struck through, tool tips white with navy text.
 - [ ] The choice survives closing and reopening the program.
 - [ ] `reg query HKCU\Software\FilterKeysSetter /v Theme` shows `0` after
       clearing it, `1` after ticking it.
 - [ ] Turning Windows high contrast on (left `Alt` + left `Shift` +
-      `Print screen`) forces the light theme **while the program is
-      running** and disables the check box; turning it off restores the
-      stored preference.
+      `Print screen`) drops **both** brand palettes while the program is
+      running and disables the check box: the dialog then looks like the
+      high contrast scheme, buttons and check boxes included, because
+      every painter stands down. Turning it off restores the stored
+      preference. A dialog that stays white or navy under high contrast
+      means a painter is still asking `IsDark()` instead of
+      `IsBranded()`.
 
 - [ ] In the dark theme **nothing is left white or grey**: the four
       numeric fields, the test field, the five group box frames and their

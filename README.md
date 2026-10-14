@@ -28,19 +28,23 @@ Releases can be built by GitHub rather than by hand -- see
 
 # Appearance
 
-The dialog ships with a dark theme built from the palette of the application
-icon: a navy background that deepens from `#2A4A7B` through `#1F3A61` to
-`#14263F`, `#1D5188` input surfaces and a `#5D9CD6` accent. Clear the
-*Dark theme* check box next to the *OK* button to fall back to the native
-light look; the choice is remembered in
-`HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme`.
+The dialog ships with two themes cut from one palette, the one the
+application icon is built from. **Dark** uses the deep end of it: a navy
+background that deepens from `#2A4A7B` through `#1F3A61` to `#14263F`,
+`#1D5188` input surfaces and a `#5D9CD6` accent. **Light** uses the
+luminous end on a white canvas: `#FFFFFF` drifting down to `#D6E8F7`, white
+surfaces, midnight navy `#14263F` text and a `#3778B5` accent. Clear the
+*Dark theme* check box next to the *OK* button to switch; the choice is
+remembered in `HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme`.
 
-In the dark theme the dialog paints itself rather than leaving it to
-Windows: push buttons, sliders, group boxes, check boxes and radio buttons
-are drawn through `NM_CUSTOMDRAW`, the edit fields and labels through
-`WM_CTLCOLOR*`, and the tool tips are recoloured as well. In the light
-theme every control is handed straight back to the visual style, and
-Windows high contrast switches the custom palette off completely.
+Windows high contrast overrides both: the dialog then uses the system
+colours unchanged and lets Windows draw every control, because those
+colours are the user's own accessibility choice.
+
+In both themes the dialog paints itself rather than leaving it to Windows:
+push buttons, sliders, group boxes, check boxes and radio buttons are
+drawn through `NM_CUSTOMDRAW`, the edit fields and labels through
+`WM_CTLCOLOR*`, and the tool tips are recoloured as well.
 
 Every control can be reached from the keyboard: hold `Alt` to see the
 underlined accelerators (`Alt`+`D` for the repeat delay, `Alt`+`K` for the
@@ -126,7 +130,7 @@ python tools\check-error-handling.py   :: Win32 results that are thrown away
 python tools\check-project.py          :: project references, configurations, precompiled header
 python tools\check-docs.py             :: links, headings and file names in the documentation
 python tools\selftest.py               :: breaks the sources on purpose to test the six above
-                                       :: 46 mutations, each one has to be caught
+                                       :: 47 mutations, each one has to be caught
 python tools\check-all.py              :: all of the above, with one verdict at the end
 ```
 

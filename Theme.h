@@ -1,8 +1,18 @@
 ﻿// Theme.h : colour palette and theming helpers for the FilterKeys Setter dialog.
 //
-// The palette is derived from the application icon: a navy background that
-// deepens towards the bottom in three steps, blue input surfaces and a light
-// blue accent.
+// Both palettes come from the same brand spectrum, the one the application
+// icon is built from: luminous sky blue (#5D9CD6) through the base blue
+// (#3778B5) and the deep blue (#1D5188) down to midnight navy (#14263F),
+// with #D6E8F7 as the light outline tone.
+//
+// Dark mode runs the deep half of that spectrum: a navy background that
+// deepens towards the bottom in three steps, blue input surfaces, a sky blue
+// accent. Light mode runs the luminous half on a white canvas: white to
+// #D6E8F7 behind, white surfaces, midnight navy text.
+//
+// Windows high contrast is the exception. There the system colours are used
+// unchanged and every painter stands down, because those colours are a
+// deliberate accessibility choice by the user.
 
 #pragma once
 
@@ -51,6 +61,11 @@ public:
 	ThemeMode GetMode() const { return m_mode; }
 	bool IsDark() const { return m_mode == ThemeMode::Dark; }
 
+	// True while the brand palette is in charge, which is what the painters
+	// ask: both the dark and the light theme are drawn by the program, and
+	// only high contrast is handed back to Windows untouched.
+	bool IsBranded() const { return m_bBranded; }
+
 	const ThemePalette& Palette() const { return m_palette; }
 
 	HBRUSH BackBrush() const { return m_brushBack; }
@@ -81,6 +96,7 @@ private:
 	void Rebuild();
 
 	ThemeMode m_mode;
+	bool m_bBranded;
 	ThemePalette m_palette;
 	HBRUSH m_brushBack;
 	HBRUSH m_brushSurface;

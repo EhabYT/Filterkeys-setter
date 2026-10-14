@@ -26,19 +26,37 @@ namespace
 		RGB(0xA8, 0xBB, 0xD6),  // disabled      #A8BBD6
 	};
 
-	// Light mode deliberately stays close to the system colours so the dialog
-	// keeps looking like a native Windows utility.
-	ThemePalette MakeLightPalette()
+	// Light mode is the luminous half of the same spectrum on a white canvas:
+	// the background drifts from pure white down to the light outline tone,
+	// surfaces stay white and the text is midnight navy.
+	const ThemePalette kLightPalette = {
+		RGB(0xFF, 0xFF, 0xFF),  // back top      #FFFFFF
+		RGB(0xEA, 0xF4, 0xFB),  // back middle   #EAF4FB  (white -> #D6E8F7)
+		RGB(0xD6, 0xE8, 0xF7),  // back bottom   #D6E8F7
+		RGB(0xFF, 0xFF, 0xFF),  // surface       #FFFFFF
+		RGB(0x37, 0x78, 0xB5),  // accent        #3778B5
+		RGB(0x5D, 0x9C, 0xD6),  // accent muted  #5D9CD6
+		RGB(0x14, 0x26, 0x3F),  // text          #14263F
+		RGB(0x1D, 0x51, 0x88),  // secondary     #1D5188
+		// The one tone chosen for being weaker rather than for contrast:
+		// 4.65:1 on white and 3.71:1 on the lowest band of the background.
+		// Disabled text is exempt from the contrast requirement, and a
+		// disabled field has to read as disabled.
+		RGB(0x37, 0x78, 0xB5),  // disabled      #3778B5
+	};
+
+	// High contrast: the system colours, used exactly as Windows gives them.
+	ThemePalette MakeSystemPalette()
 	{
 		ThemePalette p;
 		p.clrBackTop        = ::GetSysColor(COLOR_3DFACE);
 		p.clrBackMid        = ::GetSysColor(COLOR_3DFACE);
 		p.clrBackBottom     = ::GetSysColor(COLOR_3DFACE);
 		p.clrSurface        = ::GetSysColor(COLOR_WINDOW);
-		p.clrAccent         = RGB(0x1D, 0x51, 0x88);
-		p.clrAccentMuted    = RGB(0x37, 0x78, 0xB5);
+		p.clrAccent         = ::GetSysColor(COLOR_HIGHLIGHT);
+		p.clrAccentMuted    = ::GetSysColor(COLOR_HIGHLIGHT);
 		p.clrText           = ::GetSysColor(COLOR_WINDOWTEXT);
-		p.clrTextSecondary  = ::GetSysColor(COLOR_GRAYTEXT);
+		p.clrTextSecondary  = ::GetSysColor(COLOR_WINDOWTEXT);
 		p.clrTextDisabled   = ::GetSysColor(COLOR_GRAYTEXT);
 		return p;
 	}
@@ -51,6 +69,7 @@ namespace
 
 CTheme::CTheme()
 	: m_mode(ThemeMode::Dark)
+	, m_bBranded(true)
 	, m_brushBack(NULL)
 	, m_brushSurface(NULL)
 	, m_bOwnsBrushes(false)
@@ -114,13 +133,20 @@ bool CTheme::IsHighContrast()
 
 void CTheme::SetMode(ThemeMode mode)
 {
-	// High contrast always wins over the stored preference.
-	if (IsHighContrast()) {
+	// High contrast always wins over the stored preference, and it switches
+	// the brand palette off rather than merely picking the lighter one.
+	m_bBranded = !IsHighContrast();
+	if (!m_bBranded) {
 		mode = ThemeMode::Light;
 	}
 
 	m_mode = mode;
-	m_palette = (mode == ThemeMode::Dark) ? kDarkPalette : MakeLightPalette();
+	if (!m_bBranded) {
+		m_palette = MakeSystemPalette();
+	}
+	else {
+		m_palette = (mode == ThemeMode::Dark) ? kDarkPalette : kLightPalette;
+	}
 	Rebuild();
 }
 
@@ -160,7 +186,7 @@ void CTheme::PaintBackground(CDC& dc, const CRect& rect) const
 
 void CTheme::PaintBackgroundSlice(CDC& dc, const CRect& full, const CRect& target) const
 {
-	if (!IsDark()) {
+	if (!IsBranded()) {
 		dc.FillSolidRect(target, m_palette.clrBackTop);
 		return;
 	}
@@ -248,7 +274,7 @@ void CTheme::ApplyToToolTip(HWND hWndToolTip) const
 	// is drawn by the visual style engine, which is why the control has to be
 	// detached first. Unlike the dialog's own controls a tooltip loses nothing
 	// by that: it is a rectangle with one run of text.
-	if (IsDark()) {
+	if (IsBranded()) {
 		::SetWindowTheme(hWndToolTip, L"", L"");
 		::SendMessage(hWndToolTip, TTM_SETTIPBKCOLOR,
 		              static_cast<WPARAM>(m_palette.clrSurface), 0);

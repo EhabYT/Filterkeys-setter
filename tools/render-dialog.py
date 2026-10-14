@@ -77,19 +77,22 @@ DARK = {
     "frame": (0x0D, 0x1A, 0x2C),
 }
 
+# The luminous half of the same spectrum on a white canvas. Both palettes
+# have to match Theme.cpp exactly; the preview is worthless the moment it
+# shows colours the program does not use.
 LIGHT = {
-    "back_top": (0xF0, 0xF0, 0xF0),
-    "back_mid": (0xF0, 0xF0, 0xF0),
-    "back_bottom": (0xF0, 0xF0, 0xF0),
+    "back_top": (0xFF, 0xFF, 0xFF),
+    "back_mid": (0xEA, 0xF4, 0xFB),
+    "back_bottom": (0xD6, 0xE8, 0xF7),
     "surface": (0xFF, 0xFF, 0xFF),
-    "accent": (0x1D, 0x51, 0x88),
-    "accent_muted": (0x37, 0x78, 0xB5),
-    "text": (0x00, 0x00, 0x00),
-    "secondary": (0x44, 0x44, 0x44),
-    "disabled": (0x6D, 0x6D, 0x6D),
+    "accent": (0x37, 0x78, 0xB5),
+    "accent_muted": (0x5D, 0x9C, 0xD6),
+    "text": (0x14, 0x26, 0x3F),
+    "secondary": (0x1D, 0x51, 0x88),
+    "disabled": (0x37, 0x78, 0xB5),
     "title": (0xFF, 0xFF, 0xFF),
-    "title_text": (0x00, 0x00, 0x00),
-    "frame": (0x9B, 0x9B, 0x9B),
+    "title_text": (0x14, 0x26, 0x3F),
+    "frame": (0x5D, 0x9C, 0xD6),
 }
 
 
@@ -231,7 +234,7 @@ class Canvas:
         # The program draws the frame in the muted accent (see
         # PaintThemedGroupBox); the preview has to use the same colour or it
         # flatters the implementation.
-        pen = self.pal["accent_muted"] if self.pal is DARK else self.pal["disabled"]
+        pen = self.pal["accent_muted"]
         self.d.rectangle([x0, y0 + self.px(4), x1, y1], outline=pen,
                          width=max(1, self.k // 2))
         if caption:
@@ -249,14 +252,14 @@ class Canvas:
     def edit(self, rect, value):
         x0, y0, x1, y1 = self.box(rect)
         self.d.rectangle([x0, y0, x1, y1], fill=self.pal["surface"],
-                         outline=self.pal["disabled"], width=max(1, self.k // 2))
+                         outline=self.pal["accent_muted"], width=max(1, self.k // 2))
         self.d.text((x0 + self.px(4), (y0 + y1) / 2), value, font=self.font,
                     fill=self.pal["text"], anchor="lm")
 
     def button(self, rect, caption, default=False):
         x0, y0, x1, y1 = self.box(rect)
         self.d.rectangle([x0, y0, x1, y1], fill=self.pal["surface"],
-                         outline=self.pal["accent"] if default else self.pal["disabled"],
+                         outline=self.pal["accent"] if default else self.pal["accent_muted"],
                          width=max(1, self.k // 2) * (2 if default else 1))
         self.label(((x0 + x1) / 2, (y0 + y1) / 2), caption, "mm", self.pal["text"])
 
@@ -266,15 +269,14 @@ class Canvas:
         cy = (y0 + y1) / 2
         bx0, by0 = x0, cy - side / 2
         self.d.rectangle([bx0, by0, bx0 + side, by0 + side],
-                         fill=self.pal["accent"] if checked else self.pal["surface"],
-                         outline=self.pal["accent"] if checked else self.pal["disabled"],
+                         fill=self.pal["surface"],
+                         outline=self.pal["accent_muted"],
                          width=max(1, self.k // 2))
         if checked:
             self.d.line([(bx0 + side * 0.22, by0 + side * 0.52),
                          (bx0 + side * 0.42, by0 + side * 0.74),
                          (bx0 + side * 0.80, by0 + side * 0.26)],
-                        fill=(0xFF, 0xFF, 0xFF) if self.pal is DARK else (0xFF, 0xFF, 0xFF),
-                        width=max(2, self.k))
+                        fill=self.pal["text"], width=max(2, self.k))
         self.label((bx0 + side + self.px(5), cy), caption, "lm", self.pal["text"])
 
     def radio(self, rect, caption, selected):
@@ -283,13 +285,13 @@ class Canvas:
         cy = y0 + self.px(7)
         self.d.ellipse([x0, cy - side / 2, x0 + side, cy + side / 2],
                        fill=self.pal["surface"],
-                       outline=self.pal["accent"] if selected else self.pal["disabled"],
+                       outline=self.pal["accent_muted"],
                        width=max(1, self.k // 2))
         if selected:
             inset = side * 0.3
             self.d.ellipse([x0 + inset, cy - side / 2 + inset,
                             x0 + side - inset, cy + side / 2 - inset],
-                           fill=self.pal["accent"])
+                           fill=self.pal["text"])
         self._wrapped(caption, x0 + side + self.px(5), y0 + self.px(2),
                       x1 - (x0 + side + self.px(5)))
 

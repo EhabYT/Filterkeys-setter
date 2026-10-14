@@ -23,7 +23,7 @@ namespace
 	bool PaintThemedCheckBox(const CTheme& theme, LPNMCUSTOMDRAW pcd,
 	                         const CRect& rcBehind)
 	{
-		if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
+		if (!theme.IsBranded() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
 			return false;
 		}
 
@@ -165,7 +165,7 @@ namespace
 	bool PaintThemedGroupBox(const CTheme& theme, LPNMCUSTOMDRAW pcd,
 	                         const CRect& rcBehind)
 	{
-		if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
+		if (!theme.IsBranded() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
 			return false;
 		}
 
@@ -225,9 +225,9 @@ namespace
 
 	bool PaintThemedPushButton(const CTheme& theme, LPNMCUSTOMDRAW pcd)
 	{
-		// Light mode keeps the native button, which is exactly what it
-		// should look like there.
-		if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
+		// Both brand themes are painted here; only high contrast keeps the
+		// native button, because there the system colours are the point.
+		if (!theme.IsBranded() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
 			return false;
 		}
 
@@ -372,7 +372,7 @@ BOOL CAboutDlg::OnInitDialog()
 
 BOOL CAboutDlg::OnEraseBkgnd(CDC* pDC)
 {
-	if (!m_theme.IsDark()) {
+	if (!m_theme.IsBranded()) {
 		return CDialog::OnEraseBkgnd(pDC);
 	}
 	CRect rect;
@@ -383,7 +383,7 @@ BOOL CAboutDlg::OnEraseBkgnd(CDC* pDC)
 
 HBRUSH CAboutDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
-	if (!m_theme.IsDark()) {
+	if (!m_theme.IsBranded()) {
 		return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 	}
 	if (nCtlColor == CTLCOLOR_STATIC || nCtlColor == CTLCOLOR_BTN) {
@@ -796,14 +796,14 @@ void CFilterKeysSetterDlg::ApplyThemeToChildren()
 	}
 }
 
-// The trackbars are the one place where the cyan accent really carries the
-// visual identity, so they are drawn by hand in dark mode.
+// The trackbars are the one place where the accent really carries the visual
+// identity, so they are drawn by hand in both brand themes.
 void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
 	*pResult = CDRF_DODEFAULT;
 
-	if (!m_theme.IsDark() || pcd == NULL) {
+	if (!m_theme.IsBranded() || pcd == NULL) {
 		return;
 	}
 
@@ -926,7 +926,7 @@ void CFilterKeysSetterDlg::OnCustomDrawButton(NMHDR* pNMHDR, LRESULT* pResult)
 
 BOOL CFilterKeysSetterDlg::OnEraseBkgnd(CDC* pDC)
 {
-	if (!m_theme.IsDark()) {
+	if (!m_theme.IsBranded()) {
 		return CDialog::OnEraseBkgnd(pDC);
 	}
 	CRect rect;
@@ -937,7 +937,7 @@ BOOL CFilterKeysSetterDlg::OnEraseBkgnd(CDC* pDC)
 
 HBRUSH CFilterKeysSetterDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 {
-	if (!m_theme.IsDark()) {
+	if (!m_theme.IsBranded()) {
 		return CDialog::OnCtlColor(pDC, pWnd, nCtlColor);
 	}
 

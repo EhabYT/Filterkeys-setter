@@ -116,6 +116,11 @@ CASES = [
      "ON_NOTIFY(NM_CUSTOMDRAW, IDC_TEST_EDIT, OnCustomDrawSlider)",
      "detaches Edit controls"),
 
+    ("painter that stands down in light mode instead of high contrast", MAP, DLG,
+     "if (!theme.IsBranded() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {\n\t\t\treturn false;\n\t\t}\n\n\t\tCDC* pDC = CDC::FromHandle(pcd->hdc);\n\t\tCWnd* pBox",
+     "if (!theme.IsDark() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {\n\t\t\treturn false;\n\t\t}\n\n\t\tCDC* pDC = CDC::FromHandle(pcd->hdc);\n\t\tCWnd* pBox",
+     "asks IsDark()"),
+
     # -- check-project.py -------------------------------------------------
     ("project references a file that is gone", PROJECT, VCXPROJ,
      '<ClInclude Include="Theme.h" />',
@@ -194,8 +199,8 @@ CASES = [
 
     ("colour in the documentation that the code does not define", DOCS,
      os.path.join("docs", "UI-UPGRADE.md"),
-     "| Surface (edit fields) | `#1D5188` | `COLOR_WINDOW` |",
-     "| Surface (edit fields) | `#1D5199` | `COLOR_WINDOW` |",
+     "| Surface (edit fields) | `#1D5188` | `#FFFFFF` | `COLOR_WINDOW` |",
+     "| Surface (edit fields) | `#1D5199` | `#FFFFFF` | `COLOR_WINDOW` |",
      "which Theme.cpp does not define"),
 
     # -- check-error-handling.py -----------------------------------------

@@ -12,7 +12,7 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 
 ### What is new
 
-- **Dark theme** built from the application icon palette, switchable to the native light look; the choice is remembered. Windows high contrast switches it off entirely, live.
+- **Two themes from one palette**, the one the application icon is built from: dark uses its deep end (navy background, `#1D5188` surfaces, `#5D9CD6` accent), light uses its luminous end on a white canvas (`#FFFFFF` to `#D6E8F7`, midnight navy text, `#3778B5` accent). The choice is remembered. Windows high contrast overrides both and hands every control back to Windows, live.
 - **Sliders** for repeat delay and repeat rate, in sync with the numeric fields; the edit box stays authoritative outside the slider range.
 - **A status line** showing what Windows is actually using, which is not necessarily what the fields contain.
 - **Tool tips on 28 controls**, including the three read-outs whose meaning is least obvious.
@@ -44,7 +44,7 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 - Six static checkers run on any machine with Python -- dialog layout,
   message maps, resources, error handling, project files and the
   documentation itself. `tools\check-all.py` runs the lot with one verdict,
-  and `tools\selftest.py` verifies them by breaking the repository in 46
+  and `tools\selftest.py` verifies them by breaking the repository in 47
   ways and insisting each break is caught. One of those rules reads two
   files at once: a control that is custom drawn must not also be detached
   from the visual style in `Theme.cpp`, because a detached control sends

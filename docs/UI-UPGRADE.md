@@ -21,7 +21,7 @@ Deliberately **not** done: per-monitor DPI awareness, noted under
 | Dialog font | `MS Shell Dlg` 8 pt (maps to Tahoma, a Windows XP look) | Segoe UI 9 pt |
 | DPI | Not declared — bitmap-stretched and blurry above 100 % scaling | System DPI aware |
 | Manifest | Present in `res/`, referenced by nothing, hard-coded `X86` | Merged into the binary; `supportedOS` for Windows 7–11, `longPathAware` |
-| Colours | System default | Dark theme from the icon palette, light theme still available |
+| Colours | System default | Two themes from the brand spectrum: the deep half for dark, the luminous half on white for light |
 | Repeat delay / rate | Numeric edit boxes only | Edit boxes plus synchronised sliders with a cyan thumb |
 | Flags readout | `(122)` | `Flags: 122 (0x7A)` |
 | Status | None | Live line showing what Windows is actually using |
@@ -32,17 +32,28 @@ Deliberately **not** done: per-monitor DPI awareness, noted under
 
 ## Colour palette
 
-| Role | Dark | Light |
-|---|---|---|
-| Background top | `#2A4A7B` | `COLOR_3DFACE` |
-| Background middle | `#1F3A61` | `COLOR_3DFACE` |
-| Background bottom | `#14263F` | `COLOR_3DFACE` |
-| Surface (edit fields) | `#1D5188` | `COLOR_WINDOW` |
-| Accent (slider thumb) | `#5D9CD6` | `#1D5188` |
-| Muted accent (slider channel) | `#3778B5` | `#3778B5` |
-| Primary text | `#FFFFFF` | `COLOR_WINDOWTEXT` |
-| Secondary text | `#E0E0E0` | `COLOR_GRAYTEXT` |
-| Disabled text | `#A8BBD6` | `COLOR_GRAYTEXT` |
+Both themes are cut from one spectrum -- `#5D9CD6`, `#3778B5`, `#1D5188`,
+`#2A4A7B`, `#1F3A61`, `#14263F`, with `#D6E8F7` as the light outline tone.
+Dark mode uses the deep end of it, light mode the luminous end on a white
+canvas:
+
+| Role | Dark | Light | High contrast |
+|---|---|---|---|
+| Background top | `#2A4A7B` | `#FFFFFF` | `COLOR_3DFACE` |
+| Background middle | `#1F3A61` | `#EAF4FB` | `COLOR_3DFACE` |
+| Background bottom | `#14263F` | `#D6E8F7` | `COLOR_3DFACE` |
+| Surface (edit fields) | `#1D5188` | `#FFFFFF` | `COLOR_WINDOW` |
+| Accent (slider thumb) | `#5D9CD6` | `#3778B5` | `COLOR_HIGHLIGHT` |
+| Muted accent (outlines) | `#3778B5` | `#5D9CD6` | `COLOR_HIGHLIGHT` |
+| Primary text | `#FFFFFF` | `#14263F` | `COLOR_WINDOWTEXT` |
+| Secondary text | `#E0E0E0` | `#1D5188` | `COLOR_WINDOWTEXT` |
+| Disabled text | `#A8BBD6` | `#3778B5` | `COLOR_GRAYTEXT` |
+
+The light column is a gradient as well, white drifting down to `#D6E8F7`;
+`#EAF4FB` is the midpoint between the two. The accent and its muted
+partner swap places between the themes, which is the whole trick: against
+navy the brighter blue is the one that stands out, against white it is the
+darker one.
 
 The background is a **three stop** gradient: `#2A4A7B` at the top, `#1F3A61`
 halfway down, `#14263F` at the bottom. `CTheme::PaintBackgroundSlice` walks
@@ -65,6 +76,13 @@ fails if a number drifts, so it can be trusted rather than believed:
 | `#E0E0E0` | `#14263F` | 11.5:1 |
 | `#A8BBD6` | `#2A4A7B` | 4.5:1 |
 | `#A8BBD6` | `#14263F` | 7.8:1 |
+| `#14263F` | `#FFFFFF` | 15.2:1 |
+| `#14263F` | `#EAF4FB` | 13.7:1 |
+| `#14263F` | `#D6E8F7` | 12.1:1 |
+| `#14263F` | `#5D9CD6` | 5.2:1 |
+| `#1D5188` | `#FFFFFF` | 8.1:1 |
+| `#1D5188` | `#D6E8F7` | 6.5:1 |
+| `#3778B5` | `#FFFFFF` | 4.65:1 |
 
 The worst case is 4.5:1 and the requirement is 4.5:1, which is not a
 coincidence: it is what fixed the disabled colour. The old `#8CA4C4` was
@@ -78,7 +96,13 @@ chosen against a much darker background and managed 6.2:1 there:
 Against the new, lighter top band the same colour drops to 3.5:1 -- below
 the requirement. `#A8BBD6` restores it.
 
-`#5D9CD6` and `#3778B5` are used for fills and outlines only, never for text.
+`#5D9CD6` is used for fills and outlines only, never for text. `#3778B5` is
+text in exactly one place: disabled captions in the light theme, where it
+reaches 4.65:1 on white and 3.71:1 on the lowest band of the background.
+That is the one pair in either theme under 4.5:1. Disabled text is exempt
+from the requirement, and the alternative -- a disabled field that looks
+enabled -- is the worse accessibility outcome. Every enabled pairing is
+above the line.
 
 ## Files touched
 
@@ -589,6 +613,57 @@ handler existed, was declared, was mapped, had the right signature and
 addressed a control that exists. All of that was true while the dialog
 still looked wrong.
 
+## Letting the light theme join the brand
+
+Until now the light theme was deliberately plain: `GetSysColor` for
+everything, the native look, the brand confined to dark mode. The brand
+guidelines put white at the centre of the identity rather than outside it
+-- a pure white canvas, luminous blues for prominence, midnight navy for
+type -- so the light theme is now drawn from the same spectrum as the dark
+one and the two are mirror images:
+
+* The background drifts from `#FFFFFF` at the top to `#D6E8F7` at the
+  foot, through the same three-stop, 128-band gradient the dark theme
+  uses. No harsh edge anywhere, which is guideline one.
+* Surfaces stay pure white, text is midnight navy `#14263F`, computed
+  read-outs are the deep blue `#1D5188`.
+* Accent and muted accent swap: `#3778B5` carries prominence against
+  white, `#5D9CD6` does the outlines. In dark mode it is the other way
+  round. That swap is why one set of painters can serve both themes
+  without a single conditional inside them -- they only ever name roles,
+  never colours.
+
+**What high contrast made necessary.** Every painter used to ask
+`IsDark()`, which doubled as "is the brand palette in charge", because
+high contrast was implemented by forcing light mode. With light mode
+branded that shortcut becomes a bug: high contrast would get the brand
+colours instead of the user's own. `CTheme` therefore separates the two
+questions. `IsDark()` is still the theme, and the new `IsBranded()` is
+false only under high contrast, where the palette falls back to the system
+colours and every painter returns false so Windows draws the control. The
+painters all ask `IsBranded()` now; the *Dark theme* check box still asks
+`IsDark()`, because that is what it shows.
+
+`check-message-map.py` got the rule that keeps this honest: every
+`PaintThemed*` function has to guard on `IsBranded()`. Asking `IsDark()`
+is reported by name, and so is a painter with no guard at all --
+
+```
+PaintThemedCheckBox asks IsDark(); a painter has to ask IsBranded(), or it
+repaints the high contrast scheme in brand colours
+```
+
+-- because that mistake produces nothing visible until someone with high
+contrast turned on opens the dialog.
+
+Nothing in the dark theme moved. `docs/img/dialog-light.png` was
+regenerated and is no longer a grey box: `tools/render-dialog.py` carries
+both palettes, and the preview is worthless the moment it shows colours
+the program does not use. Three places in the renderer were flattering the
+implementation and were corrected at the same time -- the indicator face
+of a ticked check box is the surface colour, not the accent, the tick is
+drawn in the text colour, and a radio dot likewise.
+
 ## The states a hand-drawn control has to remember
 
 A painter replaces the style engine completely, so every state the engine
@@ -685,7 +760,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **46 mutations**.
+Both are covered by the self test, which now runs **47 mutations**.
 
 ## Handler signatures
 
@@ -897,7 +972,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **46 mutations** one at a time --
+clean on the untouched copy, then applies **47 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -908,7 +983,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `46 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `47 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -1042,5 +1117,5 @@ That runs all seven. The expected output is two `ok` lines from
 `check-dialog-layout.py`, `0 problem(s)` with a single note about
 `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`, `3 file(s), 0 problem(s)`,
 `15 reference(s), 0 problem(s)` with three notes, `8 document(s),
-0 problem(s)`, `46 case(s), 0 failure(s)` and the closing line
+0 problem(s)`, `47 case(s), 0 failure(s)` and the closing line
 `all 7 checks passed`. Anything else is a regression.

@@ -355,6 +355,34 @@ def control_kind(kind, line):
     return None, set()
 
 
+def check_painter_guards(text, rel):
+    """A painter must stand down under high contrast, not merely in light mode.
+
+    CTheme::IsDark() answers which theme is active; IsBranded() answers
+    whether the brand palette is in charge at all, and only the second one
+    is false while Windows high contrast is on. A painter that asks the
+    first would repaint the high contrast scheme in brand colours.
+    """
+    problems = []
+    for match in re.finditer(r"\bbool\s+(Paint\w+)\s*\([^)]*CTheme", text):
+        name = match.group(1)
+        body = text[match.end():]
+        end = body.find("\n\t}")
+        body = body[:end if end != -1 else 2000]
+        if "IsBranded()" in body:
+            continue
+        line = text[:match.start()].count("\n") + 1
+        if "IsDark()" in body:
+            problems.append("%s:%d: %s asks IsDark(); a painter has to ask "
+                            "IsBranded(), or it repaints the high contrast "
+                            "scheme in brand colours" % (rel, line, name))
+        else:
+            problems.append("%s:%d: %s never checks IsBranded() and would "
+                            "paint over the high contrast scheme"
+                            % (rel, line, name))
+    return problems
+
+
 def check_customdraw(text, controls, rel):
     """NM_CUSTOMDRAW on a control that ApplyToControl detaches from the style."""
     theme_path = os.path.join(ROOT, THEME_SOURCE)
@@ -424,6 +452,7 @@ def check_wiring(sources, rc_path):
 
         problems += check_ddx_types(text, controls, types, rel)
         problems += check_customdraw(text, controls, rel)
+        problems += check_painter_guards(text, rel)
 
         referenced = set()
         referenced |= ddx_ids(text)
