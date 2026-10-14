@@ -143,8 +143,9 @@ HEX = re.compile(r"#([0-9A-Fa-f]{6})\b")
 
 # Colours that appear in the documentation on purpose without being in the
 # current palette: the rejected disabled colour and the background it was
-# chosen against.
-HISTORICAL_COLOURS = {"8CA4C4", "0A2342"}
+# chosen against, the grey that used to be the dark theme's secondary text,
+# and the grey the brand sheet uses as its example of one creeping in.
+HISTORICAL_COLOURS = {"8CA4C4", "0A2342", "E0E0E0", "808080"}
 
 
 def _channel(value):
@@ -176,6 +177,39 @@ def palette_colours(root):
                              r"\s*,\s*0x([0-9A-Fa-f]{2})\s*\)", read(path)):
         found.add("".join(part.upper() for part in match.groups()))
     return found
+
+
+BRAND_SHEET = os.path.join("docs", "BRAND.md")
+
+
+def check_brand_sheet(root, documents):
+    """Every colour the code defines has to be written down in BRAND.md.
+
+    check_colours() enforces the other direction -- a colour quoted in any
+    document must exist in Theme.cpp -- so between them no colour can enter
+    the program without being named, and none can be named without being
+    used.
+    """
+    sheet = documents.get(BRAND_SHEET.replace(os.sep, "/"))
+    if sheet is None:
+        sheet = documents.get(BRAND_SHEET)
+    if sheet is None:
+        return ["%s is missing: it is the list every colour has to be in"
+                % BRAND_SHEET]
+
+    listed = {match.group(1).upper() for match in HEX.finditer(sheet)}
+    path = os.path.join(root, "Theme.cpp")
+    if not os.path.exists(path):
+        return []
+
+    problems = []
+    for match in re.finditer(r"RGB\(\s*0x([0-9A-Fa-f]{2})\s*,\s*0x([0-9A-Fa-f]{2})"
+                             r"\s*,\s*0x([0-9A-Fa-f]{2})\s*\)", read(path)):
+        colour = "".join(part.upper() for part in match.groups())
+        if colour not in listed:
+            problems.append("Theme.cpp defines #%s, which %s does not list"
+                            % (colour, BRAND_SHEET))
+    return sorted(set(problems))
 
 
 def check_colours(root, documents):
@@ -300,6 +334,7 @@ def main():
     problems += check_tools_documented(root, documents)
     problems += check_accelerator_table(root, documents)
     problems += check_colours(root, documents)
+    problems += check_brand_sheet(root, documents)
 
     for problem in problems:
         print("  ! %s" % problem)

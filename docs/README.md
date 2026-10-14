@@ -1,11 +1,12 @@
 # Documentation
 
-Five documents, in the order they usually become relevant.
+Six documents, in the order they usually become relevant.
 
 | Document | When it is what you want |
 | --- | --- |
 | [MFC.md](MFC.md) | The build stopped with `MSB8041: MFC libraries are required for this project`. Which component to install, in English and German, and the cases where it is installed and the error appears anyway. |
 | [UI-UPGRADE.md](UI-UPGRADE.md) | The long one: what changed in the interface and why, the palette and its contrast ratios, the accelerator table, every static checker and the reasoning behind it, and the trade-offs that were deliberately not taken. |
+| [BRAND.md](BRAND.md) | The colour identity: the eight waypoints, what each one is for, the two tones that are extensions rather than waypoints, and the rules. Every colour in `Theme.cpp` has to be in it, and `tools/check-docs.py` enforces that in both directions. |
 | [TESTING.md](TESTING.md) | A build exists and someone has to press the buttons. What the program writes, how to back it up, and eight groups of checks. |
 | [RELEASE.md](RELEASE.md) | Cutting a version: the six places the version number lives, the installer's `ProductCode` rule, building both platforms, publishing. |
 | [workflows/README.md](workflows/README.md) | The two GitHub Actions files, why they live under `docs/` instead of `.github/workflows/`, and how to install them. |

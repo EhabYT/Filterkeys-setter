@@ -20,7 +20,7 @@ namespace
 		RGB(0x5D, 0x9C, 0xD6),  // accent        #5D9CD6
 		RGB(0x37, 0x78, 0xB5),  // accent muted  #3778B5
 		RGB(0xFF, 0xFF, 0xFF),  // text          #FFFFFF
-		RGB(0xE0, 0xE0, 0xE0),  // secondary     #E0E0E0
+		RGB(0xD6, 0xE8, 0xF7),  // secondary     #D6E8F7
 		// Light enough to stay above 4.5:1 on the lightest band of the
 		// gradient (#2A4A7B), where the old #8CA4C4 only reached 3.5:1.
 		RGB(0xA8, 0xBB, 0xD6),  // disabled      #A8BBD6

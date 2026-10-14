@@ -32,6 +32,10 @@ Deliberately **not** done: per-monitor DPI awareness, noted under
 
 ## Colour palette
 
+The full identity, including what each colour is *for* and the rules that
+govern it, is in [BRAND.md](BRAND.md). What follows is how this dialog
+applies it.
+
 Both themes are cut from one spectrum -- `#5D9CD6`, `#3778B5`, `#1D5188`,
 `#2A4A7B`, `#1F3A61`, `#14263F`, with `#D6E8F7` as the light outline tone.
 Dark mode uses the deep end of it, light mode the luminous end on a white
@@ -46,7 +50,7 @@ canvas:
 | Accent (slider thumb) | `#5D9CD6` | `#3778B5` | `COLOR_HIGHLIGHT` |
 | Muted accent (outlines) | `#3778B5` | `#5D9CD6` | `COLOR_HIGHLIGHT` |
 | Primary text | `#FFFFFF` | `#14263F` | `COLOR_WINDOWTEXT` |
-| Secondary text | `#E0E0E0` | `#1D5188` | `COLOR_WINDOWTEXT` |
+| Secondary text | `#D6E8F7` | `#1D5188` | `COLOR_WINDOWTEXT` |
 | Disabled text | `#A8BBD6` | `#3778B5` | `COLOR_GRAYTEXT` |
 
 The light column is a gradient as well, white drifting down to `#D6E8F7`;
@@ -72,8 +76,8 @@ fails if a number drifts, so it can be trusted rather than believed:
 | `#FFFFFF` | `#14263F` | 15.2:1 |
 | `#FFFFFF` | `#1D5188` | 8.1:1 |
 | `#FFFFFF` | `#3778B5` | 4.65:1 |
-| `#E0E0E0` | `#2A4A7B` | 6.7:1 |
-| `#E0E0E0` | `#14263F` | 11.5:1 |
+| `#D6E8F7` | `#2A4A7B` | 7.1:1 |
+| `#D6E8F7` | `#14263F` | 12.1:1 |
 | `#A8BBD6` | `#2A4A7B` | 4.5:1 |
 | `#A8BBD6` | `#14263F` | 7.8:1 |
 | `#14263F` | `#FFFFFF` | 15.2:1 |
@@ -664,6 +668,31 @@ implementation and were corrected at the same time -- the indicator face
 of a ticked check box is the surface colour, not the accent, the tick is
 drawn in the text colour, and a radio dot likewise.
 
+## A colour sheet the compiler cannot ignore
+
+Two colours in the code were not part of the identity at all: the dark
+theme's secondary text was `#E0E0E0`, a neutral grey, and nothing stopped
+the next one from being added. Documentation that lists a palette is a
+promise; nothing had been checking it.
+
+[BRAND.md](BRAND.md) is now that list, and `check-docs.py` closes the
+circle in both directions:
+
+* a colour quoted in any document must be defined in `Theme.cpp` -- the
+  rule that already existed;
+* a colour defined in `Theme.cpp` must be listed in `BRAND.md`.
+
+Together they mean a colour cannot enter the program without being
+written down, and cannot be written down without being used. The self
+test adds a grey to `Theme.cpp` and insists the sheet notices.
+
+`#E0E0E0` went in the same round. It is replaced by the brand's outline
+tone `#D6E8F7`, which is not a compromise: 7.1:1 against the lightest
+band of the dark background where the grey managed 6.7:1. The two
+remaining non-waypoints are written down as extensions, with the reason
+each exists -- `#EAF4FB` is an interpolation, `#A8BBD6` is the disabled
+tone that no waypoint could supply at 4.5:1.
+
 ## The grey trench around the edit boxes
 
 One frame in the dialog belonged to neither painter nor brush: the sunken
@@ -788,7 +817,7 @@ checks every `DDX_Control` pairing:
 IDC_DELAY_SLIDER is a msctls_trackbar32, but m_sliderDelay binds it to a CButton
 ```
 
-Both are covered by the self test, which now runs **47 mutations**.
+Both are covered by the self test, which now runs **48 mutations**.
 
 ## Handler signatures
 
@@ -962,7 +991,7 @@ External URLs are left alone: there is no network here, and a page that
 moved is not this repository's fault. The anchor rule follows GitHub's
 slug algorithm -- lowercase, punctuation dropped, spaces to hyphens.
 
-Expected output: `8 document(s), 0 problem(s)`.
+Expected output: `9 document(s), 0 problem(s)`.
 
 ## Running them all at once
 
@@ -1000,7 +1029,7 @@ python tools\selftest.py -v
 ```
 
 It copies the tree into a scratch directory, confirms all five checkers are
-clean on the untouched copy, then applies **47 mutations** one at a time --
+clean on the untouched copy, then applies **48 mutations** one at a time --
 a button pushed off the dialog, a control moved out of its group box, a
 duplicate accelerator, a label accelerator pointing at the wrong row, a check
 box without `WS_TABSTOP`, a handler that is mapped but not declared, a tool
@@ -1011,7 +1040,7 @@ is restored and the checkers must be clean again. The working tree is never
 touched.
 
 The test was itself verified by neutering the duplicate-accelerator rule in
-`check-dialog-layout.py`: `47 case(s), 1 failure(s)` --
+`check-dialog-layout.py`: `48 case(s), 1 failure(s)` --
 `the same accelerator used twice: check-dialog-layout.py did not notice`.
 
 ## Known trade-offs
@@ -1144,6 +1173,6 @@ python tools\check-all.py
 That runs all seven. The expected output is two `ok` lines from
 `check-dialog-layout.py`, `0 problem(s)` with a single note about
 `CWinApp::OnHelp`, `38 symbol(s), 0 problem(s)`, `3 file(s), 0 problem(s)`,
-`15 reference(s), 0 problem(s)` with three notes, `8 document(s),
-0 problem(s)`, `47 case(s), 0 failure(s)` and the closing line
+`15 reference(s), 0 problem(s)` with three notes, `9 document(s),
+0 problem(s)`, `48 case(s), 0 failure(s)` and the closing line
 `all 7 checks passed`. Anything else is a regression.

@@ -203,6 +203,11 @@ CASES = [
      "| Surface (edit fields) | `#1D5199` | `#FFFFFF` | `COLOR_WINDOW` |",
      "which Theme.cpp does not define"),
 
+    ("colour in the code that the brand sheet does not list", DOCS, "Theme.cpp",
+     "RGB(0x2A, 0x4A, 0x7B),  // back top      #2A4A7B",
+     "RGB(0x80, 0x80, 0x80),  // back top      #2A4A7B",
+     "does not list"),
+
     # -- check-error-handling.py -----------------------------------------
     ("SystemParametersInfo result dropped", ERRORS, DLG,
      "\tm_bHaveOriginal = !!SystemParametersInfo(SPI_GETFILTERKEYS,",

@@ -37,6 +37,10 @@ surfaces, midnight navy `#14263F` text and a `#3778B5` accent. Clear the
 *Dark theme* check box next to the *OK* button to switch; the choice is
 remembered in `HKEY_CURRENT_USER\Software\FilterKeysSetter\Theme`.
 
+The whole identity -- every colour, what it is for, and the two
+deliberate extensions -- is in [docs/BRAND.md](docs/BRAND.md), which the
+checkers hold the code to.
+
 Windows high contrast overrides both: the dialog then uses the system
 colours unchanged and lets Windows draw every control, because those
 colours are the user's own accessibility choice.
@@ -130,7 +134,7 @@ python tools\check-error-handling.py   :: Win32 results that are thrown away
 python tools\check-project.py          :: project references, configurations, precompiled header
 python tools\check-docs.py             :: links, headings and file names in the documentation
 python tools\selftest.py               :: breaks the sources on purpose to test the six above
-                                       :: 47 mutations, each one has to be caught
+                                       :: 48 mutations, each one has to be caught
 python tools\check-all.py              :: all of the above, with one verdict at the end
 ```
 
