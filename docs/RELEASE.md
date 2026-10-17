@@ -69,7 +69,9 @@ tools\release.cmd v1.11
 ```
 
 With a tag, the script uploads the executables to that release with the
-GitHub CLI; drafts work too. ## Without a Windows machine
+GitHub CLI; drafts work too.
+
+## Without a Windows machine
 
 With `docs/workflows/release.yml` installed under `.github/workflows/`, none
 of the build steps below have to happen locally: open the **Actions** tab,
@@ -89,5 +91,10 @@ gh release edit v1.11 --notes-file notes.md
 They should name the version, what
 changed, and that the FilterKeys and registry behaviour is unchanged.
 
-A draft release for 1.11 already exists in the repository, with notes, and is
-waiting for the two executables.
+The release can also be published first and given its executables afterwards.
+Without `gh`, a `POST` to
+`https://uploads.github.com/repos/<owner>/<repo>/releases/<id>/assets?name=<file>`
+does the same job, with a token from `git credential fill`, and a `PATCH` on
+`https://api.github.com/repos/<owner>/<repo>/releases/<id>` replaces the notes.
+The 1.11 release, published on 14 October 2026, carries both executables since
+17 October 2026.
