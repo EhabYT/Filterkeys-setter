@@ -1554,6 +1554,30 @@ void CFilterKeysSetterDlg::SetReadout(CWnd& label, const CString& strText)
 	}
 
 	label.SetWindowText(strText);
+
+	// These labels answer WM_CTLCOLORSTATIC with a hollow brush: they paint
+	// their text and nothing else, and the gradient behind them belongs to
+	// the dialog. That works until the value changes. Then the control
+	// repaints its own window alone, the digits of the value before it are
+	// still on screen, and the new ones are drawn on top of them -- measured
+	// on the screen, which is the only place it shows: a PrintWindow capture
+	// hides it, because rendering the dialog repaints the gradient under the
+	// labels as a side effect. So the parent is asked to paint that slice of
+	// the gradient again, in the same pass, and the label draws its text over
+	// it.
+	CWnd* pParent = label.GetParent();
+	if (pParent != NULL) {
+		// In the parent's coordinates. The label's own client rectangle would
+		// land in the parent's top left corner and repaint nothing that
+		// matters.
+		CRect rc;
+		label.GetWindowRect(&rc);
+		pParent->ScreenToClient(&rc);
+		pParent->RedrawWindow(&rc, NULL,
+		                      RDW_INVALIDATE | RDW_ERASE | RDW_UPDATENOW
+		                      | RDW_ALLCHILDREN);
+	}
+
 	::NotifyWinEvent(EVENT_OBJECT_NAMECHANGE, label.GetSafeHwnd(),
 	                 OBJID_CLIENT, CHILDID_SELF);
 }

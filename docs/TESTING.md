@@ -121,6 +121,11 @@ covers the rest.
       the field moves the slider.
 - [ ] The same for *Repeat rate*, and the *(x.x per second)* read-out
       follows along.
+- [ ] Changing a read-out twice leaves nothing of the value in between:
+      `300` after `1` in *Repeat rate* shows `(3.3 per second)` and no digits
+      of `(1000.0 per second)`. A label with leftovers grows with every
+      change, and the *Flags* read-out does the same over the preset
+      buttons.
 - [ ] Typing a value **above** the slider maximum (`5000` into repeat
       delay, whose slider stops at 2000) leaves the field alone and parks
       the slider at its maximum. The field, not the slider, is what gets

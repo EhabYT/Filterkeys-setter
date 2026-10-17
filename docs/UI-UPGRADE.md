@@ -458,6 +458,46 @@ SetReadout(), so the change is never announced
 
 The self test proves the rule fires, which makes **54 mutations**.
 
+## The read-outs kept the value before them
+
+Those three labels answer `WM_CTLCOLORSTATIC` with a hollow brush: they
+paint their text and nothing else, and the gradient behind them belongs to
+the dialog. That is what seats them on the background instead of in a box,
+and it is also what broke them. A label whose text changes repaints its own
+window and nothing else, so the digits of the value before it stayed on
+screen and the new ones were drawn on top. Typing `300` over `1` in *Repeat
+rate* left the old `(1000.0` standing beside `(3.3 per second)`, and the
+next change added another layer.
+
+`SetReadout()` now asks the parent to paint that slice of the gradient
+again, in the same pass as the label's text:
+
+```cpp
+CRect rc;
+label.GetWindowRect(&rc);
+pParent->ScreenToClient(&rc);   // the parent's coordinates, not the label's
+pParent->RedrawWindow(&rc, NULL, RDW_INVALIDATE | RDW_ERASE
+                                | RDW_UPDATENOW | RDW_ALLCHILDREN);
+```
+
+The rectangle has to be in the coordinates of the window that paints.
+Handed the label's own client rectangle, the parent repaints a patch in its
+top left corner and nothing on screen changes.
+
+Measured, and a trap for whoever checks this next: `PrintWindow` cannot see
+this bug. Rendering the dialog repaints the gradient under the labels as a
+side effect, so a capture taken that way is clean whatever the labels are
+doing -- and so is the forced repaint one would compare it against. It shows
+only on the screen, through `GetDC()` on the window and a `BitBlt` from it.
+The check in TESTING.md needs neither: it draws the same string twice, once
+from the start-up value and once after an intermediate one, and the two
+renderings have to match.
+
+The flags read-out is the same call and the same brush, so it had the same
+fault; it just needs a preset button rather than a field to change. Its
+label is left aligned, so what it keeps is the tail of the old string
+instead of the front.
+
 ## Push buttons in the dark theme
 
 The eight push buttons were the last native-grey island in the dark dialog,
