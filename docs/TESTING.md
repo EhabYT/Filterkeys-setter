@@ -1,10 +1,9 @@
 # Manual test plan
 
-Nothing in this repository has ever been compiled: there is no MSVC here.
-Eight static checkers stand in for the compiler, but they cannot press a
-button. This is the list to work through the first time a build runs, and
-after that before each release. `docs/RELEASE.md` carries the short version;
-this is the long one.
+None of the checks runs the program: the eight static checkers read the
+sources, but not one of them can press a button. This is the list to work
+through the first time a build runs, and after that before each release.
+`docs/RELEASE.md` carries the short version; this is the long one.
 
 Budget about fifteen minutes.
 
