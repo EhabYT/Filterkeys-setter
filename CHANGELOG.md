@@ -33,6 +33,7 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 - Three Win32 reads whose failure was not checked. One of them followed its own error box by silently zeroing every field; another offered to "restore" FilterKeys off with all timings at 0; the third presented invented values as the Windows keyboard settings.
 - `GetStringRegKey()` assumed `RegQueryValueEx` null terminates its result, which it does not promise, and read from an uninitialised buffer.
 - The dialog members were never initialised — the first `UpdateData(FALSE)` ran on indeterminate memory.
+- A read-out could keep the pixels of the value before it. The three read-outs are transparent statics over a gradient, so a shorter value left the tail of the longer one visible underneath it — `300` followed by `3.3 per second` showed both at once. The dialog repaints that strip itself when a read-out changes.
 - The manifest declared `processorArchitecture="X86"` and a duplicate common-controls dependency; it was also referenced by nothing.
 - The installer was a parallel install rather than an upgrade, and packaged seven UCRT forwarder DLLs without the `ucrtbase.dll` they forward to.
 - The project hard-coded platform toolset `v143`, which fails with `MSB8020` under Visual Studio 2026.
