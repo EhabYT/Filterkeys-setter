@@ -40,6 +40,20 @@ It builds `Release` for `Win32` and `x64`, copies both executables to
 SHA-256, and picks up `FilterKeysSetter.msi` if the setup project has been
 built in Visual Studio (MSBuild alone cannot build a `.vdproj`).
 
+The installer needs the Installer Projects extension. It is not part of the
+Visual Studio Installer catalogue -- it comes from the Marketplace as a
+`.vsix`, and installing it asks for elevation. With it in place the setup
+project builds without opening the IDE:
+
+```cmd
+devenv FilterKeysSetter.sln /Build "Release|x64" /Project FilterKeysSetter.Setup /ProjectConfig "Release"
+```
+
+Both `/Project` and `/ProjectConfig` are needed: no solution configuration
+builds the setup project, so without them devenv skips it and still reports
+success. The binary it packages is `..\x64\Release\FilterKeysSetter.exe`, so
+that configuration has to be built first.
+
 Default output locations, in case they are needed by hand:
 
 | Platform | Executable |

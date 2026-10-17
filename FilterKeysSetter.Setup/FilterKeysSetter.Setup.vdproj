@@ -33,6 +33,12 @@
         }
         "Entry"
         {
+        "MsmKey" = "8:_3A7C1E5B9D2F4867A1B3C5D7E9F01234"
+        "OwnerKey" = "8:_9AAF199178064D47B2A96CC3CBB69FBD"
+        "MsmSig" = "8:_UNDEFINED"
+        }
+        "Entry"
+        {
         "MsmKey" = "8:_51B386D00B2D4341BC24EDB317C1F29E"
         "OwnerKey" = "8:_9AAF199178064D47B2A96CC3CBB69FBD"
         "MsmSig" = "8:_UNDEFINED"
@@ -210,6 +216,26 @@
             {
             "SourcePath" = "8:api-ms-win-crt-convert-l1-1-0.dll"
             "TargetName" = "8:api-ms-win-crt-convert-l1-1-0.dll"
+            "Tag" = "8:"
+            "Folder" = "8:_2D3BFF4981B745D29AB524EB3DB4FF6C"
+            "Condition" = "8:"
+            "Transitive" = "11:FALSE"
+            "Vital" = "11:TRUE"
+            "ReadOnly" = "11:FALSE"
+            "Hidden" = "11:FALSE"
+            "System" = "11:FALSE"
+            "Permanent" = "11:FALSE"
+            "SharedLegacy" = "11:FALSE"
+            "PackageAs" = "3:1"
+            "Register" = "3:1"
+            "Exclude" = "11:TRUE"
+            "IsDependency" = "11:TRUE"
+            "IsolateTo" = "8:"
+            }
+            "{1FB2D0AE-D3B9-43D4-B9DD-F88EC61E35DE}:_3A7C1E5B9D2F4867A1B3C5D7E9F01234"
+            {
+            "SourcePath" = "8:UxTheme.dll"
+            "TargetName" = "8:UxTheme.dll"
             "Tag" = "8:"
             "Folder" = "8:_2D3BFF4981B745D29AB524EB3DB4FF6C"
             "Condition" = "8:"
