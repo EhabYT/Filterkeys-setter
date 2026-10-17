@@ -35,7 +35,7 @@ FilterKeys Setter 1.11 — the first release since 1.10, and a large one.
 - The dialog members were never initialised — the first `UpdateData(FALSE)` ran on indeterminate memory.
 - A read-out could keep the pixels of the value before it. The three read-outs are transparent statics over a gradient, so a shorter value left the tail of the longer one visible underneath it — `300` followed by `3.3 per second` showed both at once. The dialog repaints that strip itself when a read-out changes.
 - The manifest declared `processorArchitecture="X86"` and a duplicate common-controls dependency; it was also referenced by nothing.
-- The installer was a parallel install rather than an upgrade, and packaged seven UCRT forwarder DLLs without the `ucrtbase.dll` they forward to.
+- The installer was a parallel install rather than an upgrade, and packaged seven UCRT forwarder DLLs without the `ucrtbase.dll` they forward to. Those forwarders belong to Windows 10 and are excluded now. It also could not be built at all: it tried to package `UxTheme.dll` out of the system directory, which the build refuses. Both are fixed, and `tools\release.cmd` picks the `.msi` up.
 - The project hard-coded platform toolset `v143`, which fails with `MSB8020` under Visual Studio 2026.
 
 ### For maintainers
