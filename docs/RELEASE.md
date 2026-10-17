@@ -42,8 +42,14 @@ built in Visual Studio (MSBuild alone cannot build a `.vdproj`).
 
 The installer needs the Installer Projects extension. It is not part of the
 Visual Studio Installer catalogue -- it comes from the Marketplace as a
-`.vsix`, and installing it asks for elevation. With it in place the setup
-project builds without opening the IDE:
+`.vsix`, and installing it asks for elevation. A Visual Studio that was
+already installed when the extension arrived does not know the project type
+until its configuration has been rebuilt; `devenv /updateconfiguration` does
+that. Until then the solution reports the setup project as an unsupported
+project type and writes an `UpgradeLog.htm` beside itself.
+
+With the extension in place, Visual Studio 2022 builds the setup project from
+the command line:
 
 ```cmd
 devenv FilterKeysSetter.sln /Build "Release|x64" /Project FilterKeysSetter.Setup /ProjectConfig "Release"
@@ -51,8 +57,10 @@ devenv FilterKeysSetter.sln /Build "Release|x64" /Project FilterKeysSetter.Setup
 
 Both `/Project` and `/ProjectConfig` are needed: no solution configuration
 builds the setup project, so without them devenv skips it and still reports
-success. The binary it packages is `..\x64\Release\FilterKeysSetter.exe`, so
-that configuration has to be built first.
+success. Visual Studio 2026 refuses that combination with an invalid-parameter
+error, so there the project is built from the IDE instead -- right-click it and
+Build. Either way the file it packages is `..\x64\Release\FilterKeysSetter.exe`,
+so that configuration has to be built first.
 
 Default output locations, in case they are needed by hand:
 
