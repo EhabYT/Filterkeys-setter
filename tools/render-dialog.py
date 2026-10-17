@@ -36,8 +36,31 @@ DLU_Y = 1.875
 SCALE = 2        # output pixels per 96 dpi pixel
 SS = 2           # extra supersampling, removed again when the image is resized
 
-FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+# The dialog asks Windows for Segoe UI, and the DLU sizes above are that face's
+# metrics, so the picture has to be drawn in it. The DejaVu paths are what a
+# Linux box has, which is where this script was written; the first candidate
+# that exists wins, and a machine with neither is told rather than quietly
+# drawing the dialog in some other face.
+WINDOWS_FONTS = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
+DEJAVU = "/usr/share/fonts/truetype/dejavu"
+FONTS = {
+    "regular": (os.path.join(WINDOWS_FONTS, "segoeui.ttf"),
+                os.path.join(DEJAVU, "DejaVuSans.ttf")),
+    "bold": (os.path.join(WINDOWS_FONTS, "segoeuib.ttf"),
+             os.path.join(DEJAVU, "DejaVuSans-Bold.ttf")),
+}
+
+
+def font_path(kind):
+    for candidate in FONTS[kind]:
+        if os.path.exists(candidate):
+            return candidate
+    raise SystemExit("no %s font found; looked at %s"
+                     % (kind, ", ".join(FONTS[kind])))
+
+
+FONT_PATH = font_path("regular")
+FONT_BOLD = font_path("bold")
 
 TITLE_H_DLU = 16
 

@@ -25,9 +25,33 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 
-FONT_PATH = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
-FONT_BOLD = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
-FONT_MONO = "/usr/share/fonts/truetype/dejavu/DejaVuSansMono.ttf"
+# Windows first -- Segoe UI is the face the dialog itself asks for -- with the
+# DejaVu paths of the Linux box this was written on as the fallback, so the
+# sheet can be drawn on either. Neither is a reason to draw it in some other
+# face without saying so.
+WINDOWS_FONTS = os.path.join(os.environ.get("WINDIR", r"C:\Windows"), "Fonts")
+DEJAVU = "/usr/share/fonts/truetype/dejavu"
+FONTS = {
+    "regular": (os.path.join(WINDOWS_FONTS, "segoeui.ttf"),
+                os.path.join(DEJAVU, "DejaVuSans.ttf")),
+    "bold": (os.path.join(WINDOWS_FONTS, "segoeuib.ttf"),
+             os.path.join(DEJAVU, "DejaVuSans-Bold.ttf")),
+    "mono": (os.path.join(WINDOWS_FONTS, "consola.ttf"),
+             os.path.join(DEJAVU, "DejaVuSansMono.ttf")),
+}
+
+
+def font_path(kind):
+    for candidate in FONTS[kind]:
+        if os.path.exists(candidate):
+            return candidate
+    raise SystemExit("no %s font found; looked at %s"
+                     % (kind, ", ".join(FONTS[kind])))
+
+
+FONT_PATH = font_path("regular")
+FONT_BOLD = font_path("bold")
+FONT_MONO = font_path("mono")
 
 SCALE = 2
 
