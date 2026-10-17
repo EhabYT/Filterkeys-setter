@@ -60,9 +60,10 @@ covers the rest.
       foot, white fields, navy text, no grey anywhere.
 - [ ] The five edit boxes have a flat one pixel blue outline, not the
       grey sunken trench Windows draws by default, and their text does
-      not sit hard against that outline. Disabling one (*Bounce time*,
-      by selecting the first radio button) keeps it in the theme colours
-      rather than turning it grey.
+      not sit hard against that outline. Taking one out of play
+      (*Bounce time*, by selecting the first radio button, or *Repeat
+      delay* by selecting the second) drops its value to the palette's
+      disabled tone rather than to the system grey.
 - [ ] The light theme is drawn by the program too, so the same checks
       apply to it: nothing left in the system grey, group box captions
       not struck through, tool tips white with navy text.
@@ -80,13 +81,22 @@ covers the rest.
 
 - [ ] In the dark theme **nothing is left white or grey**: the four
       numeric fields, the test field, the five group box frames and their
-      captions, the check boxes and the two radio buttons are all drawn in
-      the blue palette. A white box or a caption with a line through it
-      means that control stopped receiving `NM_CUSTOMDRAW`.
+      captions, the check boxes, the two radio buttons and the band behind
+      both sliders are all drawn in the blue palette. A white box, a caption
+      with a line through it, or a black or white strip running behind a
+      slider means that control stopped receiving its colours -- the
+      painters for most of them, `WM_CTLCOLORSTATIC` for the two bands. The
+      one exception is the test field's cue banner: comctl32 draws that text
+      in the system grey by design, and no message changes it.
 - [ ] Hovering a check box lightens its indicator, holding the mouse
       button down darkens it, and the keyboard focus draws a dotted
       rectangle around the caption -- the same three states the push
       buttons show.
+- [ ] Clicking *Ignore repeated keystrokes* greys both sliders out: their
+      thumbs lose the cyan. Every control inside a group box stays where it
+      was, and so does the frame's gap at its caption. A field, a radio
+      button or a slider that disappears when a frame is repainted means the
+      frame is drawing over its own group.
 - [ ] Switching the theme back and forth repeatedly leaves no stripes or
       leftovers behind: every painter redraws the slice of the background
       gradient that sits behind its control.

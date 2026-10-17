@@ -111,7 +111,7 @@ CASES = [
 
     ("custom drawn control detached from the visual style", MAP, "Theme.cpp",
      "if (isPushButton || isGroupBox || isCheck || isRadio) {",
-     "if (isPushButton || isCheck || isRadio) {",
+     "if (isGroupBox || isCheck || isRadio) {",
      "which stops NM_CUSTOMDRAW"),
 
     ("custom draw asked of a control class that cannot send it", MAP, DLG,

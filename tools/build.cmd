@@ -1,4 +1,4 @@
-﻿@echo off
+@echo off
 setlocal enabledelayedexpansion
 rem ---------------------------------------------------------------------------
 rem build.cmd -- find the installed Visual Studio, build FilterKeysSetter and
@@ -68,6 +68,9 @@ if not defined MSBUILD (
     goto :fail
 )
 
+rem ---------------------------------------------------------------------------
+rem Toolchain with MFC.
+rem
 rem MFC is not part of the "Desktop development with C++" workload, and its
 rem absence is the single most common failure here: MSBuild stops with
 rem
@@ -81,52 +84,55 @@ rem so this script looks for the same file and says which architecture is
 rem missing before MSBuild has to. Component ids are not probed for that:
 rem a side-by-side MFC under a versioned id is just as usable, and the file
 rem is the thing that actually decides.
-set "VCTOOLSVER="
-if exist "%VSDIR%\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt" (
-    for /f "usebackq delims=" %%v in ("%VSDIR%\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt") do (
-        if not defined VCTOOLSVER set "VCTOOLSVER=%%v"
-    )
-)
-rem VS 2026 keeps the same layout, but if that file is ever missing or names
-rem a toolset that is not installed, fall back to the newest folder present.
-if defined VCTOOLSVER (
-    set "VCTOOLSVER=!VCTOOLSVER: =!"
-    if not exist "%VSDIR%\VC\Tools\MSVC\!VCTOOLSVER!\" set "VCTOOLSVER="
-)
-if not defined VCTOOLSVER (
-    for /f "delims=" %%d in ('dir /b /ad /on "%VSDIR%\VC\Tools\MSVC" 2^>nul') do set "VCTOOLSVER=%%d"
-)
+rem
+rem The newest IDE is not always the one that has it -- "C++ MFC for latest
+rem v1NN build tools" is a separate component, so a machine with VS 2026 for
+rem editing and a Build Tools 2022 (or a layout the installer never
+rem registered, which vswhere cannot see at all) for MFC is a normal setup.
+rem Rather than refusing, every other candidate is probed for the same file
+rem and the first one that carries it for every requested platform wins; the
+rem IDE itself stays untouched.
+rem ---------------------------------------------------------------------------
+call :mfcof "%VSDIR%"
+set "MFCROOT="
+if not defined MFCMISSING set "MFCROOT=%VSDIR%"
 
-set "VCTOOLSDIR="
-if defined VCTOOLSVER (
-    set "VCTOOLSVER=!VCTOOLSVER: =!"
-    set "VCTOOLSDIR=%VSDIR%\VC\Tools\MSVC\!VCTOOLSVER!"
-)
-
-set "MFCMISSING="
-set "MFCFOUND="
-if defined VCTOOLSDIR (
-    for %%p in (%PLATFORMS%) do (
-        set "SHORT=x86"
-        if /i "%%p"=="x64" set "SHORT=x64"
-        if exist "!VCTOOLSDIR!\atlmfc\lib\!SHORT!\mfcs140.lib" (
-            set "MFCFOUND=!MFCFOUND! !SHORT!"
-        ) else (
-            set "MFCMISSING=!MFCMISSING! !SHORT!"
+set "MFCFALLBACK="
+if not defined MFCROOT (
+    for /f "usebackq delims=" %%i in (`"%VSWHERE%" -all -products * -property installationPath 2^>nul`) do (
+        if not defined MFCROOT (
+            call :trychain "%%i"
         )
     )
 )
+rem vswhere reports only what the VS Installer registered. These locations
+rem are the usual names a hand-installed or offline-layout Build Tools keeps.
+if not defined MFCROOT call :trychain "%ProgramFiles(x86)%\BuildTools"
+if not defined MFCROOT call :trychain "%ProgramFiles%\BuildTools"
+if not defined MFCROOT call :trychain "%SystemDrive%\VS_BuildTools"
+if not defined MFCROOT call :trychain "%SystemDrive%\BuildTools"
 
 echo.
 echo Visual Studio : %VSNAME%
 echo Path          : %VSDIR%
 echo MSBuild       : %MSBUILD%
-if not defined VCTOOLSDIR (
-    echo MFC           : not checked ^(no MSVC toolset folder under "%VSDIR%"^)
+if defined MFCROOT (
+    echo MSVC toolset  : !VCTOOLSVER!
+    echo MFC           : installed for!MFCFOUND!
+    if defined MFCFALLBACK (
+        echo.
+        echo     [i] The newest registered installation has no MFC for the
+        echo         requested platform^(s^), so the toolchain above is used
+        echo         instead. To make the IDE the default again, open the
+        echo         Visual Studio Installer and add
+        echo             "C++ MFC for latest v143 build tools" ^(VS 2022^) or
+        echo             "C++ MFC for latest v145 build tools" ^(VS 2026^).
+    )
 ) else if defined MFCMISSING (
     echo MSVC toolset  : !VCTOOLSVER!
     echo MFC           : MISSING for!MFCMISSING!
     echo.
+    echo     No installed toolchain carries MFC for!MFCMISSING!.
     echo     MSBuild would stop with error MSB8041. It looks for
     echo         !VCTOOLSDIR!\atlmfc\lib\^<arch^>\mfcs140.lib
     echo     and that file is not there for the architecture^(s^) above.
@@ -150,8 +156,7 @@ if not defined VCTOOLSDIR (
     echo.
     goto :fail
 ) else (
-    echo MSVC toolset  : !VCTOOLSVER!
-    echo MFC           : installed for!MFCFOUND!
+    echo MFC           : not checked ^(no MSVC toolset folder under "%VSDIR%"^)
 )
 echo.
 
@@ -197,3 +202,64 @@ exit /b 0
 :fail
 popd
 exit /b 1
+
+rem ---------------------------------------------------------------------------
+rem trychain <root> -- use this installation when it has both MSBuild and the
+rem MFC library for every requested platform; otherwise leave everything as
+rem it was. Sets MFCROOT on success.
+rem ---------------------------------------------------------------------------
+:trychain
+if not exist "%~1\MSBuild\Current\Bin\MSBuild.exe" exit /b 0
+call :mfcof "%~1"
+if defined MFCMISSING exit /b 0
+set "VSDIR=%~1"
+set "MSBUILD=%~1\MSBuild\Current\Bin\MSBuild.exe"
+set "VSNAME=Build Tools at %~1"
+set "MFCROOT=%~1"
+set "MFCFALLBACK=1"
+exit /b 0
+
+rem ---------------------------------------------------------------------------
+rem mfcof <root> -- probe one installation root for the MFC library the build
+rem actually needs. Sets VCTOOLSVER, VCTOOLSDIR and the MFCFOUND/MFCMISSING
+rem platform lists; resets all four first, so a failed probe is visible as an
+rem empty MFCFOUND rather than as the previous root's answer.
+rem ---------------------------------------------------------------------------
+:mfcof
+set "VCTOOLSVER="
+set "VCTOOLSDIR="
+set "MFCFOUND="
+set "MFCMISSING="
+if not exist "%~1\VC\Tools\MSVC\" exit /b 0
+
+rem The id is the same in VS 2022 and VS 2026 -- only the display name changes
+rem ("latest v143" vs "latest v145"). The Spectre variant counts as well, and
+rem -requiresAny makes either one enough. A side-by-side MFC installed under a
+rem versioned id is not recognised, so this stays a warning, never a refusal.
+if exist "%~1\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt" (
+    for /f "usebackq delims=" %%v in ("%~1\VC\Auxiliary\Build\Microsoft.VCToolsVersion.default.txt") do (
+        if not defined VCTOOLSVER set "VCTOOLSVER=%%v"
+    )
+)
+rem VS 2026 keeps the same layout, but if that file is ever missing or names
+rem a toolset that is not installed, fall back to the newest folder present.
+if defined VCTOOLSVER (
+    set "VCTOOLSVER=!VCTOOLSVER: =!"
+    if not exist "%~1\VC\Tools\MSVC\!VCTOOLSVER!\" set "VCTOOLSVER="
+)
+if not defined VCTOOLSVER (
+    for /f "delims=" %%d in ('dir /b /ad /on "%~1\VC\Tools\MSVC" 2^>nul') do set "VCTOOLSVER=%%d"
+)
+if not defined VCTOOLSVER exit /b 0
+set "VCTOOLSDIR=%~1\VC\Tools\MSVC\!VCTOOLSVER!"
+
+for %%p in (%PLATFORMS%) do (
+    set "SHORT=x86"
+    if /i "%%p"=="x64" set "SHORT=x64"
+    if exist "!VCTOOLSDIR!\atlmfc\lib\!SHORT!\mfcs140.lib" (
+        set "MFCFOUND=!MFCFOUND! !SHORT!"
+    ) else (
+        set "MFCMISSING=!MFCMISSING! !SHORT!"
+    )
+)
+exit /b 0

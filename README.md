@@ -95,8 +95,10 @@ in 2026, which no longer ships `v143`).
   it `Win32`. `msbuild FilterKeysSetter.sln /p:Platform=Win32` fails with `MSB4126`; either use
   `x86` there, or build `FilterKeysSetter.vcxproj`, which is what `tools\build.cmd` does.
 * **One-shot script:** `tools\build.cmd` finds the installed Visual Studio through `vswhere`,
-  warns when the MFC component is missing, rebuilds `Release` for `Win32` and `x64`, and prints
-  every error and warning at the end. Logs land in `build-Release-<platform>.log`.
+  rebuilds `Release` for `Win32` and `x64`, and prints every error and warning at the end.
+  Logs land in `build-Release-<platform>.log`. MFC is checked for before MSBuild is called:
+  when the newest installation has none, the script builds with any other installed toolchain
+  that does -- see [docs/MFC.md](docs/MFC.md#more-than-one-toolchain-only-one-with-mfc).
 
   ```cmd
   tools\build.cmd                 :: both platforms, Release

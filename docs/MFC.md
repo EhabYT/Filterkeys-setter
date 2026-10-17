@@ -97,6 +97,42 @@ is missing or names a toolset that is not on disk, from the newest folder
 under `VC\Tools\MSVC`. A `14.5x` version means v145, Visual Studio 2026;
 `14.4x` means v143, Visual Studio 2022.
 
+## More than one toolchain, only one with MFC
+
+MFC is per installation and per toolset, so a machine with Visual Studio 2026
+for editing and a Build Tools 2022 that carries MFC is a normal setup rather
+than a broken one. The same goes for a Build Tools the Visual Studio Installer
+never registered -- `vswhere` cannot report those at all.
+
+`tools\build.cmd` handles both: when the newest installation lacks MFC for a
+requested platform it looks for the same `mfcs140.lib` in the remaining
+installations and builds with the first one that has it for *every*
+requested platform, printing which toolchain it settled on:
+
+```
+Visual Studio : Build Tools at C:\VS_BuildTools
+Path          : C:\VS_BuildTools
+MSBuild       : C:\VS_BuildTools\MSBuild\Current\Bin\MSBuild.exe
+MSVC toolset  : 14.44.35207
+MFC           : installed for x86 x64
+```
+
+Probed in that order: every installation `vswhere -all` reports, then the
+usual names of an unregistered Build Tools (`%ProgramFiles(x86)%\BuildTools`,
+`%ProgramFiles%\BuildTools`, `%SystemDrive%\VS_BuildTools`,
+`%SystemDrive%\BuildTools`). Nothing is installed or modified -- the script
+only selects a different MSBuild, and only when the default one cannot build
+the project.
+
+Two consequences worth knowing:
+
+- The IDE keeps its own, MFC-less installation, so *Build* inside Visual
+  Studio still fails with MSB8041. Add the component there if you want that
+  to work too; the command line above is the shortcut.
+- A pinned toolset has to exist in the toolchain the fallback picked:
+  `tools\build.cmd x64 Release v143` asks for v143, which a v145-only
+  installation does not have.
+
 ## It is installed and the error persists
 
 - **Wrong architecture.** Building `Win32` needs `atlmfc\lib\x86`, not

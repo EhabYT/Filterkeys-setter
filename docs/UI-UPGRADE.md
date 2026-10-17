@@ -101,8 +101,9 @@ Against the new, lighter top band the same colour drops to 3.5:1 -- below
 the requirement. `#A8BBD6` restores it.
 
 `#5D9CD6` is used for fills and outlines only, never for text. `#3778B5` is
-text in exactly one place: disabled captions in the light theme, where it
-reaches 4.65:1 on white and 3.71:1 on the lowest band of the background.
+text in exactly one place in the light theme: the value in a field the mode
+switch has taken out of play, where it reaches 4.65:1 on white and 3.71:1 on
+the lowest band of the background.
 That is the one pair in either theme under 4.5:1. Disabled text is exempt
 from the requirement, and the alternative -- a disabled field that looks
 enabled -- is the worse accessibility outcome. Every enabled pairing is
@@ -370,7 +371,8 @@ which is why it cannot drift away from the main window.
 **Functional**
 
 - [ ] Each of the five presets loads plausible values
-- [ ] Switching the two radio buttons enables/disables the right fields *and* sliders
+- [ ] Switching the two radio buttons makes the right fields read-only and
+      disables the right slider
 - [ ] Apply writes the settings; the status line updates to match
 - [ ] OK applies and closes; Cancel discards
 - [ ] A value above 20000 is still rejected with the existing message box
@@ -387,7 +389,9 @@ which is why it cannot drift away from the main window.
 **Visual**
 
 - [ ] Gradient is smooth, no banding, no seam behind the sliders
-- [ ] Slider thumb is cyan when enabled, grey when disabled
+- [ ] Slider thumb is cyan when enabled; disabled it is grey in the dark
+      theme, and outlined in the muted accent in the light one, where the
+      disabled tone and the accent are the same colour
 - [ ] No black-on-dark or white-on-white text anywhere
 - [ ] Title bar is dark in the dark theme, light in the light theme
 - [ ] About box matches the main window
@@ -667,14 +671,33 @@ frame as a plain rectangle and relies on the caption being painted with an
 opaque background -- but the theme hands every static a hollow brush and
 `TRANSPARENT` background mode, so the line stayed visible behind the text.
 
-The fix is the same approach the push buttons already use: let the control
-keep the visual style so that it still sends `NM_CUSTOMDRAW`, and draw it
-here. `PaintThemedGroupBox` reproduces the gradient slice behind the box,
-then draws the frame as four separate lines so the top one can stop before
-the caption and resume after it, and finally the caption in the theme's
-text colour. The five group boxes needed real control IDs for that --
-`IDC_GRP_SETTINGS` and friends, replacing `IDC_STATIC`, which is `-1` for
-all of them and cannot be addressed by `ON_NOTIFY`.
+`PaintThemedGroupBox` reproduces the gradient slice behind the box, then draws
+the frame as four separate lines so the top one can stop before the caption
+and resume after it, and finally the caption in the theme's text colour. The
+five group boxes needed real control IDs for that -- `IDC_GRP_SETTINGS` and
+friends, replacing `IDC_STATIC`, which is `-1` for all of them and cannot be
+addressed at all.
+
+The first version of the fix reached that painter through `NM_CUSTOMDRAW`, the
+way the push buttons do, and left the group boxes with the visual style so
+that comctl32 would keep sending it. It looked right and did nothing. An
+instrumented build, logging every `NM_CUSTOMDRAW` the dialog received, got 24
+notifications on the first paint -- every one of them from a push button, none
+from a group box -- and detaching the group boxes from the style before
+forcing a repaint changed nothing. comctl32 never sends that notification for
+a `BS_GROUPBOX`, attached or detached, which is why the frames were still in
+the system colours: the pale grey of the default theme for the frame, pure
+black for the caption, in both of the program's own themes.
+
+So the painter is called from the group box's own window procedure instead.
+`CThemedGroupBox`, in `FilterKeysSetterDlg.h`, answers `WM_PAINT` and
+`WM_PRINTCLIENT` -- the same painter either way, so a capture shows what the
+screen shows -- and hands the control back to comctl32 through `Default()`
+under high contrast, where the system colours are the point. It also sets
+`WS_CLIPSIBLINGS`: a group box contains the controls of its group, so this
+fill covers a rectangle they sit in, and without that style Windows let the
+frame land on top of them, which showed up as a group box that was empty
+except for its own frame and caption.
 
 **White check boxes and radio buttons.** Not a fault exactly, but the same
 cause and clearly visible in the screenshot: detached from the style, a
@@ -688,9 +711,10 @@ and focus, and the caption in the theme's text colour with the same
 the two radio buttons, are measured with `DT_CALCRECT` first and only
 centred vertically when they fit on one line.
 
-That makes four of the five control kinds in this dialog custom drawn in
-dark mode -- push buttons, trackbars, group boxes, check boxes and radio
-buttons -- with statics and edits handled through `WM_CTLCOLOR*`.
+That leaves statics and edits as the only kinds this dialog would handle
+through `WM_CTLCOLOR*` alone: the push buttons, check boxes and radio buttons
+are custom drawn through `NM_CUSTOMDRAW`, the trackbar through `NM_CUSTOMDRAW`
+plus that brush, and the group boxes from their own window procedure.
 `tools/render-dialog.py` already drew the intended look; the gap was in
 the program, and the preview images are unchanged by these fixes, which is
 the point.
@@ -699,6 +723,62 @@ Worth noting what this says about the checkers: they verified that the
 handler existed, was declared, was mapped, had the right signature and
 addressed a control that exists. All of that was true while the dialog
 still looked wrong.
+
+## The band behind the two sliders
+
+A later screenshot, this one of the running program, showed the two
+trackbars sitting in a black strip above and below their channel -- and,
+after switching the theme back and forth, in a white strip carrying
+leftovers of the light theme instead. The channel and the thumb were correct
+in every one of those pictures, which narrowed it down: the band the
+trackbar sits in was never painted at all, and showed whatever the window
+had been created with.
+
+**Why the painter could not cover it.** `OnCustomDrawSlider` paints the
+slice of the dialog gradient behind the control when it answers
+`CDDS_PREPAINT`. That paint never reaches the screen: the band is filled
+again after the pre-paint notification has been answered, while the item
+stages that follow it -- the channel and the thumb -- do arrive. A
+temporary magenta fill in that branch proved the point. The colour is in the
+binary, and no pixel of it ever appeared, in a `PrintWindow` capture and on
+the real screen alike.
+
+**The fix is the one the edit boxes already use.** The trackbar is detached
+from the visual style in `CTheme::ApplyToControl` as well, and
+`WM_CTLCOLORSTATIC` hands it a solid brush of the gradient colour at the
+height the control sits at -- `CTheme::BackgroundColorAt`, cached through
+`CTheme::SolidBrush` so that a theme switch or a resize does not leak
+brushes. The band then continues the dialog gradient to within a single step
+of the 8-bit channel: measured on the running program, the colours above the
+control, behind it and below it differ by one -- a comparison anyone can
+repeat with a screenshot and a colour picker. Because the erase now happens,
+the leftovers of the previous theme go with it: the stripes, the white field
+and the black strip alike.
+
+**The thumb of a disabled slider kept the enabled colour.** That painter took
+the thumb's colour from `CDIS_DISABLED`, and the flag never arrives: on a
+slider that was disabled, repainted and disabled again the thumb stayed on
+`pal.clrAccent` in both themes, and the disabled tone never appeared on the
+screen. What the visual checklist asks for -- a grey thumb while the slider is
+disabled -- was therefore never true. The painter asks the control itself now,
+`::IsWindowEnabled`, and the fill takes `clrTextDisabled`, the tone a disabled
+field's text uses. In the light theme that tone and the accent are the same
+`#3778B5`, so the change has a second half: a disabled thumb is outlined in
+the muted accent instead of the text colour, the colour every quiet outline in
+this dialog is drawn in.
+
+**The trackbar is the one control on both paths.** Detaching a button is
+what stops `NM_CUSTOMDRAW`, and that is why the push buttons, check boxes
+and radio buttons keep the style. (The group boxes keep it too, but for a
+different reason: comctl32 sends them no notification either way, and what the
+style buys them is the drawing it hands back under high contrast.) The
+trackbar is the exception:
+comctl32 sends the notification for it with or without a style, which is
+what lets it take its band from `WM_CTLCOLORSTATIC` and its channel and
+thumb from the painter at the same time. `check-message-map.py` names that
+exception rather than opening a hole -- a custom-drawn control of any other
+class that gets detached is still a problem, and the self test still fires
+on it.
 
 ## Letting the light theme join the brand
 
@@ -852,6 +932,18 @@ The same round made light mode detach its edits and statics from the
 visual style, which until now only dark mode did. A themed edit paints its
 own disabled background in the system grey, and grey is the one colour the
 brand palette has no place for.
+
+The disabled *text* of a field was the other half of that grey, and it
+survived the fix. `OnCtlColor` has always asked for `clrTextDisabled` on an
+edit box that is not enabled, and a disabled edit box ignores it: it draws
+its own text in the system's `COLOR_GRAYTEXT`, which on the dark surface is a
+mid grey with barely any contrast against the field. The four numeric fields
+are therefore made **read-only** rather than disabled when the mode switch
+takes them out of play. A read-only edit keeps the colour the parent sets, so
+the value drops to `#A8BBD6` in the dark theme and `#3778B5` on white: the
+palette's own disabled tone, legible, and the same change in both themes. The
+two sliders keep the real disabled state, because a trackbar draws no text --
+only a thumb, which now changes colour with the state.
 
 ## The states a hand-drawn control has to remember
 
@@ -1180,13 +1272,21 @@ The test was itself verified by neutering the duplicate-accelerator rule in
 
 **Everything in the dark theme is drawn by hand.** This entry used to say
 that check boxes, radio buttons and group boxes look flat because they are
-detached from the visual style. That is no longer how it works: they stay
-with the style and are painted by `PaintThemedCheckBox` and
-`PaintThemedGroupBox` through `NM_CUSTOMDRAW`, which is why they can be
-dark and readable at the same time. The trade-off that remains is the
-maintenance one -- five painters in `FilterKeysSetterDlg.cpp` reproduce
+detached from the visual style. That is no longer how it works: the check
+boxes and radio buttons stay with the style and are painted by
+`PaintThemedCheckBox` through `NM_CUSTOMDRAW`, and the group boxes are painted
+by `PaintThemedGroupBox` from their own window procedure, because comctl32
+sends no notification for a `BS_GROUPBOX` at all. The trade-off that remains is
+the maintenance one -- five painters in `FilterKeysSetterDlg.cpp` reproduce
 behaviour the theme engine would have given for free, and they only cover
 the states this dialog actually reaches.
+
+**One grey is not ours to remove.** The test field's cue banner -- the hint
+that names the field for a screen reader and tells a sighted user what the
+empty box is for -- is drawn by comctl32 in the system's `COLOR_GRAYTEXT`,
+and the edit control offers no message that sets that colour. Keeping the
+field free of grey would mean drawing the hint by hand, at the price of the
+accessible name that was the whole reason for it. The grey stays.
 
 **System DPI, not per-monitor.** Per-monitor v2 requires handling
 `WM_DPICHANGED` and rebuilding fonts and layout at runtime, which this dialog

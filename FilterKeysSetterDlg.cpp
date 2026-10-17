@@ -49,14 +49,28 @@ namespace
 		CRect rc(pcd->rc);
 		theme.PaintBackgroundSlice(*pDC, rcBehind, rc);
 
-		// A 13x13 pixel indicator is what Windows uses at 96 dpi; scale it
-		// with the control height so it keeps up with higher dpi.
-		int side = ::MulDiv(13, rc.Height(), 17);
-		if (side < 9) side = 9;
-		if (side > rc.Height()) side = rc.Height();
+		// The font is selected first, because both the size of the indicator
+		// and the line it sits on depend on the font and the DPI -- not on
+		// the height of the control, which grows with the number of text
+		// lines. Deriving them from rc.Height() made the two-line radio draw
+		// a 23 px box instead of 13 px, centred between its two lines rather
+		// than on the first one.
+		CFont* pFont = pBox->GetFont();
+		CFont* pOldFont = (pFont != NULL) ? pDC->SelectObject(pFont) : NULL;
 
-		CRect rcBox(rc.left, rc.top + (rc.Height() - side) / 2,
-		            rc.left + side, rc.top + (rc.Height() - side) / 2 + side);
+		TEXTMETRIC tm = { 0 };
+		pDC->GetTextMetrics(&tm);
+		const int line = tm.tmHeight + tm.tmExternalLeading;
+
+		// A 13x13 pixel indicator is what Windows uses at 96 dpi.
+		const int dpi = ::GetDeviceCaps(pDC->GetSafeHdc(), LOGPIXELSY);
+		int side = ::MulDiv(13, dpi, 96);
+		if (side < 9) side = 9;
+		if (side > line) side = line;
+
+		// Placed on the first text line, the way the native control does it.
+		const int boxTop = rc.top + max(0, (line - side) / 2);
+		CRect rcBox(rc.left, boxTop, rc.left + side, boxTop + side);
 
 		// Pressed is darker than resting, hot is lighter: the same three
 		// steps the push buttons use, so a click reads the same way
@@ -118,11 +132,10 @@ namespace
 		const int oldMode = pDC->SetBkMode(TRANSPARENT);
 		const COLORREF oldText = pDC->SetTextColor(enabled ? pal.clrText
 		                                                   : pal.clrTextDisabled);
-		CFont* pFont = pBox->GetFont();
-		CFont* pOldFont = (pFont != NULL) ? pDC->SelectObject(pFont) : NULL;
-
 		CRect rcText(rc);
-		rcText.left = rcBox.right + ::MulDiv(5, rc.Height(), 17);
+		// The same DPI as the indicator, not the control height: a two-line
+		// caption used to push its text twice as far right as a one-line one.
+		rcText.left = rcBox.right + ::MulDiv(5, dpi, 96);
 
 		// Same UI state rule as the push buttons: no underline until the
 		// user has asked for one with Alt or the keyboard.
@@ -135,12 +148,23 @@ namespace
 
 		// Single-line captions are centred; wrapped ones start at the top,
 		// which is what the resource layout expects.
-		CRect rcMeasure(rcText);
-		pDC->DrawText(strText, rcMeasure, format | DT_CALCRECT);
-		if (rcMeasure.Height() <= rc.Height()) {
+		//
+		// The question "does this fit on one line" is about width, not
+		// height, so it is measured without DT_WORDBREAK. Measuring with it
+		// wraps first and then reports the wrapped height, which fits by
+		// construction -- so the old height test never failed, and the two
+		// multiline radio captions were drawn with DT_SINGLELINE and no
+		// ellipsis, cut off mid-word at the edge of the control.
+		CRect rcOne(rcText);
+		pDC->DrawText(strText, rcOne,
+		              (format | DT_CALCRECT | DT_SINGLELINE) & ~DT_WORDBREAK);
+		if (rcOne.right <= rcText.right) {
 			format |= DT_VCENTER | DT_SINGLELINE;
 			format &= ~DT_WORDBREAK;
 		}
+
+		CRect rcMeasure(rcText);
+		pDC->DrawText(strText, rcMeasure, format | DT_CALCRECT);
 		pDC->DrawText(strText, rcText, format);
 
 		if (focused) {
@@ -158,39 +182,62 @@ namespace
 		return true;
 	}
 
+	// The slice of the dialog gradient sitting behind a child control, in that
+	// control's own coordinates. The dialog and the group boxes both need it.
+	CRect BackgroundBehindChild(HWND hWndChild)
+	{
+		CWnd* pChild = CWnd::FromHandle(hWndChild);
+		if (pChild == NULL) {
+			return CRect(0, 0, 0, 0);
+		}
+
+		CWnd* pParent = pChild->GetParent();
+		if (pParent == NULL) {
+			return CRect(0, 0, 0, 0);
+		}
+
+		CRect rcClient;
+		pParent->GetClientRect(&rcClient);
+
+		CRect rcChild;
+		pChild->GetWindowRect(&rcChild);
+		pParent->ScreenToClient(&rcChild);
+
+		CRect behind(rcClient);
+		behind.OffsetRect(-rcChild.left, -rcChild.top);
+		return behind;
+	}
+
 	// A classic (unthemed) group box draws its frame straight across the
 	// caption, which is what put a line through "Load settings" and
 	// "Test area". Drawing it here keeps the caption legible and lets the
 	// frame use the accent colour instead of the 3D edge colours.
-	bool PaintThemedGroupBox(const CTheme& theme, LPNMCUSTOMDRAW pcd,
-	                         const CRect& rcBehind)
+	//
+	// Unlike the other painters in this file this one is not reached through
+	// NM_CUSTOMDRAW: comctl32 sends no such notification for a group box, so
+	// the control's own window procedure calls it. See CThemedGroupBox.
+	bool PaintThemedGroupBox(const CTheme& theme, CDC& dc, CWnd& box,
+	                         const CRect& rc, const CRect& rcBehind)
 	{
-		if (!theme.IsBranded() || pcd == NULL || pcd->dwDrawStage != CDDS_PREPAINT) {
-			return false;
-		}
-
-		CDC* pDC = CDC::FromHandle(pcd->hdc);
-		CWnd* pBox = CWnd::FromHandle(pcd->hdr.hwndFrom);
-		if (pDC == NULL || pBox == NULL) {
+		if (!theme.IsBranded()) {
 			return false;
 		}
 
 		const ThemePalette& pal = theme.Palette();
-		CRect rc(pcd->rc);
 
 		// Nothing has erased the background: WM_CTLCOLORSTATIC handed this
 		// control a hollow brush.
-		theme.PaintBackgroundSlice(*pDC, rcBehind, rc);
+		theme.PaintBackgroundSlice(dc, rcBehind, rc);
 
 		CString strText;
-		pBox->GetWindowText(strText);
+		box.GetWindowText(strText);
 
-		const int oldMode = pDC->SetBkMode(TRANSPARENT);
-		const COLORREF oldText = pDC->SetTextColor(pal.clrText);
-		CFont* pFont = pBox->GetFont();
-		CFont* pOldFont = (pFont != NULL) ? pDC->SelectObject(pFont) : NULL;
+		const int oldMode = dc.SetBkMode(TRANSPARENT);
+		const COLORREF oldText = dc.SetTextColor(pal.clrText);
+		CFont* pFont = box.GetFont();
+		CFont* pOldFont = (pFont != NULL) ? dc.SelectObject(pFont) : NULL;
 
-		const CSize szText = pDC->GetTextExtent(strText);
+		const CSize szText = dc.GetTextExtent(strText);
 		const int kIndent = 8;          // where the caption starts
 		const int kPadding = 3;         // clear space either side of it
 
@@ -202,24 +249,24 @@ namespace
 		const COLORREF clrEdge = pal.clrAccentMuted;
 		// Four separate lines rather than Draw3dRect, because the top one
 		// has to stop at the caption and start again after it.
-		pDC->FillSolidRect(rcFrame.left, rcFrame.top, 1, rcFrame.Height(), clrEdge);
-		pDC->FillSolidRect(rcFrame.right, rcFrame.top, 1, rcFrame.Height(), clrEdge);
-		pDC->FillSolidRect(rcFrame.left, rcFrame.bottom, rcFrame.Width() + 1, 1, clrEdge);
+		dc.FillSolidRect(rcFrame.left, rcFrame.top, 1, rcFrame.Height(), clrEdge);
+		dc.FillSolidRect(rcFrame.right, rcFrame.top, 1, rcFrame.Height(), clrEdge);
+		dc.FillSolidRect(rcFrame.left, rcFrame.bottom, rcFrame.Width() + 1, 1, clrEdge);
 
 		const int gapLeft  = rc.left + kIndent - kPadding;
 		const int gapRight = min(gapLeft + szText.cx + 2 * kPadding, rcFrame.right);
-		pDC->FillSolidRect(rcFrame.left, rcFrame.top,
-		                   max(gapLeft - rcFrame.left, 0), 1, clrEdge);
-		pDC->FillSolidRect(gapRight, rcFrame.top,
-		                   max(rcFrame.right - gapRight, 0), 1, clrEdge);
+		dc.FillSolidRect(rcFrame.left, rcFrame.top,
+		                 max(gapLeft - rcFrame.left, 0), 1, clrEdge);
+		dc.FillSolidRect(gapRight, rcFrame.top,
+		                 max(rcFrame.right - gapRight, 0), 1, clrEdge);
 
-		pDC->TextOut(rc.left + kIndent, rc.top, strText);
+		dc.TextOut(rc.left + kIndent, rc.top, strText);
 
 		if (pOldFont != NULL) {
-			pDC->SelectObject(pOldFont);
+			dc.SelectObject(pOldFont);
 		}
-		pDC->SetTextColor(oldText);
-		pDC->SetBkMode(oldMode);
+		dc.SetTextColor(oldText);
+		dc.SetBkMode(oldMode);
 		return true;
 	}
 
@@ -310,6 +357,67 @@ namespace
 
 		return true;
 	}
+}
+
+// The five group boxes are the one kind of button in this dialog that
+// comctl32 paints entirely on its own: it sends no NM_CUSTOMDRAW for a
+// BS_GROUPBOX, so there is no notification to answer the way the push
+// buttons, check boxes and radio buttons answer it. The frame and the caption
+// are drawn from the control's own window procedure instead.
+BEGIN_MESSAGE_MAP(CThemedGroupBox, CButton)
+	ON_WM_PAINT()
+	ON_MESSAGE(WM_PRINTCLIENT, OnPrintClient)
+END_MESSAGE_MAP()
+
+// A group box contains the other controls of its group, so its rectangle
+// overlaps theirs, and this one paints its whole rectangle: without
+// WS_CLIPSIBLINGS the fill would land on top of the neighbouring controls
+// whenever the dialog happened to repaint the frame after them, leaving the
+// group's contents blank. With it Windows clips the frame out of their
+// rectangles, exactly as it does for the system's own group box.
+void CThemedGroupBox::PreSubclassWindow()
+{
+	ModifyStyle(0, WS_CLIPSIBLINGS);
+	CButton::PreSubclassWindow();
+}
+
+void CThemedGroupBox::PaintBranded(CDC& dc)
+{
+	CRect rc;
+	GetClientRect(&rc);
+	PaintThemedGroupBox(*m_pTheme, dc, *this, rc,
+	                    BackgroundBehindChild(GetSafeHwnd()));
+}
+
+void CThemedGroupBox::OnPaint()
+{
+	if (m_pTheme == NULL || !m_pTheme->IsBranded()) {
+		// High contrast: the system colours are the point there, and the
+		// control draws itself exactly as it did before this subclass
+		// existed.
+		Default();
+		return;
+	}
+
+	CPaintDC dc(this);
+	PaintBranded(dc);
+}
+
+// A capture through PrintWindow takes the same path as the screen, so a
+// screenshot of the dialog cannot show a frame the user never sees.
+LRESULT CThemedGroupBox::OnPrintClient(WPARAM wParam, LPARAM /*lParam*/)
+{
+	if (m_pTheme == NULL || !m_pTheme->IsBranded()) {
+		return Default();
+	}
+
+	CDC* pDC = CDC::FromHandle(reinterpret_cast<HDC>(wParam));
+	if (pDC == NULL) {
+		return 0;
+	}
+
+	PaintBranded(*pDC);
+	return 0;
 }
 
 // CAboutDlg dialog used for App About
@@ -429,18 +537,61 @@ void CFilterKeysSetterDlg::ErrorBox(const TCHAR* msg)
 	MessageBox(msg, _T("FilterKeys Setter"), MB_ICONERROR);
 }
 
+// DDX_Text with an int calls CDataExchange::Fail() when the box is empty or
+// holds something that is not a number, and Fail() throws. That is right for
+// Apply and OK, where a bad field should stop the save, and wrong everywhere
+// else: UpdateControls() runs the same transfer on every check box click, so
+// a single cleared field used to abort the flags, the enable state and all
+// three read-outs with "Please enter an integer".
+//
+// This reads the same four boxes without throwing. An unreadable box keeps
+// the value the member already holds -- which is the last value the user
+// actually confirmed, and is in range by construction. The 20000 ms ceiling
+// is still enforced in SaveSettings(), where the error can be about the
+// field the user is looking at.
+static void TolerantInt(CDataExchange* pDX, int nIDC, int& value)
+{
+	if (!pDX->m_bSaveAndValidate) {
+		// Loading: nothing can fail, so the stock behaviour is fine.
+		pDX->m_pDlgWnd->SetDlgItemInt(nIDC, value, TRUE);
+		return;
+	}
+
+	BOOL bTranslated = FALSE;
+	const int nRead = pDX->m_pDlgWnd->GetDlgItemInt(nIDC, &bTranslated, TRUE);
+	if (bTranslated) {
+		value = nRead;
+	}
+}
+
 void CFilterKeysSetterDlg::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 
-	DDX_Text(pDX, IDC_WAIT_EDIT, m_nWait);
-	//DDV_MinMaxInt(pDX, m_nWait, 0, 20000);
-	DDX_Text(pDX, IDC_DELAY_EDIT, m_nDelay);
-	//DDV_MinMaxInt(pDX, m_nDelay, 0, 20000);
-	DDX_Text(pDX, IDC_REPEAT_EDIT, m_nRepeat);
-	//DDV_MinMaxInt(pDX, m_nRepeat, 0, 20000);
-	DDX_Text(pDX, IDC_BOUNCE_EDIT, m_nBounce);
-	//DDV_MinMaxInt(pDX, m_nBounce, 0, 20000);
+	// The control bindings come first, and that order is load-bearing.
+	// DDX_Text writes the value with SetDlgItemInt, which sends WM_SETTEXT
+	// and therefore EN_CHANGE synchronously -- before DDX_Control has
+	// subclassed anything if it runs the other way round. OnEnChangeRepeatEdit
+	// then read m_editRepeat with a NULL handle, which Release shrugged off
+	// and Debug asserted on, at start-up.
+	DDX_Control(pDX, IDC_WAIT_EDIT, m_editWait);
+	DDX_Control(pDX, IDC_DELAY_EDIT, m_editDelay);
+	DDX_Control(pDX, IDC_REPEAT_EDIT, m_editRepeat);
+	DDX_Control(pDX, IDC_BOUNCE_EDIT, m_editBounce);
+	DDX_Control(pDX, IDC_TEST_EDIT, m_editTest);
+
+	// Read tolerantly. DDX_Text with an int calls CDataExchange::Fail() when
+	// the box is empty or not a number, which reports "Please enter an
+	// integer" and throws -- aborting the whole transfer. That is the right
+	// answer for Apply and OK, but UpdateControls() runs it on every check
+	// box click, so one cleared field used to stop the flags, the enable
+	// state and the read-outs from updating at all. An unreadable box now
+	// keeps the value it already had; the range is still checked in
+	// SaveSettings(), which is where a range belongs.
+	TolerantInt(pDX, IDC_WAIT_EDIT, m_nWait);
+	TolerantInt(pDX, IDC_DELAY_EDIT, m_nDelay);
+	TolerantInt(pDX, IDC_REPEAT_EDIT, m_nRepeat);
+	TolerantInt(pDX, IDC_BOUNCE_EDIT, m_nBounce);
 
 	DDX_Check(pDX, IDC_ON, m_bOn);
 	DDX_Check(pDX, IDC_AVAILABLE, m_bAvailable);
@@ -450,13 +601,6 @@ void CFilterKeysSetterDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Check(pDX, IDC_INDICATOR, m_bIndicator);
 	DDX_Check(pDX, IDC_CLICK, m_bClick);
 
-	DDX_Control(pDX, IDC_WAIT_EDIT, m_editWait);
-	DDX_Control(pDX, IDC_DELAY_EDIT, m_editDelay);
-	DDX_Control(pDX, IDC_REPEAT_EDIT, m_editRepeat);
-	DDX_Control(pDX, IDC_BOUNCE_EDIT, m_editBounce);
-
-	DDX_Control(pDX, IDC_IGNORE_QUICK, m_radioIgnoreQuick);
-	DDX_Control(pDX, IDC_IGNORE_REPEATED, m_radioIgnoreRepeated);
 	DDX_Radio(pDX, IDC_IGNORE_QUICK, m_nMode);
 
 	DDX_Check(pDX, IDC_UPDATEINIFILE, m_bUpdateIniFile);
@@ -469,6 +613,14 @@ void CFilterKeysSetterDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_DELAY_SLIDER, m_sliderDelay);
 	DDX_Control(pDX, IDC_REPEAT_SLIDER, m_sliderRepeat);
 	DDX_Control(pDX, IDC_DARKTHEME, m_chkDarkTheme);
+
+	// The five group boxes paint themselves; they need the window object to
+	// do it, not a value.
+	DDX_Control(pDX, IDC_GRP_SETTINGS, m_grpSettings);
+	DDX_Control(pDX, IDC_GRP_FLAGS, m_grpFlags);
+	DDX_Control(pDX, IDC_GRP_APPLIED, m_grpApplied);
+	DDX_Control(pDX, IDC_GRP_LOAD, m_grpLoad);
+	DDX_Control(pDX, IDC_GRP_TEST, m_grpTest);
 }
 
 BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
@@ -523,12 +675,6 @@ BEGIN_MESSAGE_MAP(CFilterKeysSetterDlg, CDialog)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_DARKTHEME, OnCustomDrawCheckBox)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_IGNORE_QUICK, OnCustomDrawCheckBox)
 	ON_NOTIFY(NM_CUSTOMDRAW, IDC_IGNORE_REPEATED, OnCustomDrawCheckBox)
-	// Group boxes are drawn here too; the classic frame crosses its caption.
-	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_SETTINGS, OnCustomDrawGroupBox)
-	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_FLAGS, OnCustomDrawGroupBox)
-	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_APPLIED, OnCustomDrawGroupBox)
-	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_LOAD, OnCustomDrawGroupBox)
-	ON_NOTIFY(NM_CUSTOMDRAW, IDC_GRP_TEST, OnCustomDrawGroupBox)
 	ON_WM_SETTINGCHANGE()
 END_MESSAGE_MAP()
 
@@ -582,6 +728,29 @@ BOOL CFilterKeysSetterDlg::OnInitDialog()
 	// Sliders have to exist before the first SetValues() call feeds them.
 	InitSliders();
 	InitToolTips();
+
+	// A group box is the one button comctl32 sends no NM_CUSTOMDRAW for, so
+	// the five of them are painted from their own window procedure and only
+	// need to be pointed at the palette. The address is stable: the dialog
+	// rebuilds this object on a theme switch instead of replacing it.
+	CThemedGroupBox* const boxes[] = { &m_grpSettings, &m_grpFlags,
+	                                   &m_grpApplied, &m_grpLoad, &m_grpTest };
+	for (size_t i = 0; i < _countof(boxes); ++i) {
+		boxes[i]->SetTheme(&m_theme);
+	}
+
+	// Every other input in this dialog has a label that precedes it in
+	// z-order, from which a screen reader takes the accessible name. The test
+	// field is the exception: the only text near it is a group box caption,
+	// and a group box is not a label. A cue banner is the standard answer --
+	// it names the control for accessibility and tells a sighted user what
+	// the empty box is for, in one line.
+	//
+	// Sent as the message rather than through CEdit::SetCueBannerText, which
+	// this MFC does not carry. The second argument is BOOL show when focused.
+	m_editTest.SendMessage(EM_SETCUEBANNER, TRUE,
+	                       reinterpret_cast<LPARAM>(
+	                           _T("Type here to try the new repeat rate")));
 
 	RefreshThemeFromSystem();
 
@@ -794,9 +963,21 @@ void CFilterKeysSetterDlg::ApplyTheme()
 
 void CFilterKeysSetterDlg::ApplyThemeToChildren()
 {
+	// Every child is invalidated, not only the ones ApplyToControl() acted
+	// on. ApplyToControl() returns early for the controls this dialog paints
+	// itself -- push buttons, group boxes, check boxes, radio buttons -- and
+	// for the two trackbars, because they stay attached to the visual style:
+	// it is the notification, or in the group box's case the control itself,
+	// that the painter hangs off. None of them is invalidated on the way out.
+	// And invalidating the dialog alone does not repaint its children: their
+	// pixels are not part of the parent's update region. Without this the two
+	// themes swapped the background, the edits and the statics at once and
+	// left the rest in the old palette until something else happened to
+	// redraw it.
 	for (CWnd* pChild = GetWindow(GW_CHILD); pChild != NULL;
 	     pChild = pChild->GetWindow(GW_HWNDNEXT)) {
 		m_theme.ApplyToControl(pChild->GetSafeHwnd());
+		::InvalidateRect(pChild->GetSafeHwnd(), NULL, TRUE);
 	}
 }
 
@@ -821,9 +1002,12 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 	switch (pcd->dwDrawStage) {
 	case CDDS_PREPAINT:
 	{
-		// WM_CTLCOLORSTATIC hands the trackbar a hollow brush, so nothing has
-		// erased its background. Reproduce the slice of the dialog gradient
-		// that sits behind this control.
+		// The slice of the dialog gradient that sits behind this control.
+		// The trackbar also fills the band from the brush WM_CTLCOLORSTATIC
+		// hands out -- see the trackbar branch in OnCtlColor -- and it does
+		// that after this notification has been answered, so on this
+		// platform that fill is the one that shows; both colours come out of
+		// the same gradient and differ by at most one step.
 		CWnd* pSlider = CWnd::FromHandle(pcd->hdr.hwndFrom);
 		if (pSlider != NULL) {
 			CRect rcClient;
@@ -844,7 +1028,12 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 
 	case CDDS_ITEMPREPAINT:
 	{
-		const bool enabled = (pcd->uItemState & CDIS_DISABLED) == 0;
+		// CDIS_DISABLED never arrives for a trackbar's items -- measured on a
+		// control that was disabled, repainted and disabled again -- so the
+		// control's own state is what tells a disabled slider from an enabled
+		// one. Left to CDIS_DISABLED the thumb kept its enabled colour in
+		// both themes, which is not what the palette promises.
+		const bool enabled = ::IsWindowEnabled(pcd->hdr.hwndFrom) != FALSE;
 		CRect rc(pcd->rc);
 
 		if (pcd->dwItemSpec == TBCD_CHANNEL) {
@@ -857,9 +1046,15 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 		}
 
 		if (pcd->dwItemSpec == TBCD_THUMB) {
-			const COLORREF clrThumb = enabled ? pal.clrAccent : pal.clrTextDisabled;
+			// Disabled: the fill takes the disabled tone, and the outline
+			// drops from the text colour to the muted accent, the colour this
+			// dialog draws every quiet outline in. The second half is what
+			// makes the state visible in the light theme, where the disabled
+			// tone and the accent are the same #3778B5.
+			const COLORREF clrThumb     = enabled ? pal.clrAccent : pal.clrTextDisabled;
+			const COLORREF clrThumbEdge = enabled ? pal.clrText : pal.clrAccentMuted;
 			pDC->FillSolidRect(rc, clrThumb);
-			pDC->Draw3dRect(rc, pal.clrText, pal.clrText);
+			pDC->Draw3dRect(rc, clrThumbEdge, clrThumbEdge);
 			*pResult = CDRF_SKIPDEFAULT;
 			return;
 		}
@@ -876,27 +1071,6 @@ void CFilterKeysSetterDlg::OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult)
 	}
 }
 
-// The slice of the dialog gradient sitting behind a child control, in that
-// control's own coordinates.
-CRect CFilterKeysSetterDlg::BackgroundBehind(HWND hWndChild)
-{
-	CRect rcClient;
-	GetClientRect(&rcClient);
-
-	CWnd* pChild = CWnd::FromHandle(hWndChild);
-	if (pChild == NULL) {
-		return rcClient;
-	}
-
-	CRect rcChild;
-	pChild->GetWindowRect(&rcChild);
-	ScreenToClient(&rcChild);
-
-	CRect behind(rcClient);
-	behind.OffsetRect(-rcChild.left, -rcChild.top);
-	return behind;
-}
-
 void CFilterKeysSetterDlg::OnCustomDrawCheckBox(NMHDR* pNMHDR, LRESULT* pResult)
 {
 	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
@@ -904,20 +1078,8 @@ void CFilterKeysSetterDlg::OnCustomDrawCheckBox(NMHDR* pNMHDR, LRESULT* pResult)
 	if (pcd == NULL) {
 		return;
 	}
-	if (PaintThemedCheckBox(m_theme, pcd, BackgroundBehind(pcd->hdr.hwndFrom))) {
-		*pResult = CDRF_SKIPDEFAULT;
-	}
-}
-
-void CFilterKeysSetterDlg::OnCustomDrawGroupBox(NMHDR* pNMHDR, LRESULT* pResult)
-{
-	LPNMCUSTOMDRAW pcd = reinterpret_cast<LPNMCUSTOMDRAW>(pNMHDR);
-	*pResult = CDRF_DODEFAULT;
-	if (pcd == NULL) {
-		return;
-	}
-
-	if (PaintThemedGroupBox(m_theme, pcd, BackgroundBehind(pcd->hdr.hwndFrom))) {
+	if (PaintThemedCheckBox(m_theme, pcd,
+	                        BackgroundBehindChild(pcd->hdr.hwndFrom))) {
 		*pResult = CDRF_SKIPDEFAULT;
 	}
 }
@@ -982,10 +1144,36 @@ HBRUSH CFilterKeysSetterDlg::OnCtlColor(CDC* pDC, CWnd* pWnd, UINT nCtlColor)
 	                     || id == IDC_REPEAT_EDIT || id == IDC_BOUNCE_EDIT
 	                     || id == IDC_TEST_EDIT);
 
+	// A trackbar erases its own background with the brush this message hands
+	// back, and it never touches the pixels around its channel and thumb
+	// otherwise -- an unthemed trackbar draws no background of its own. So it
+	// gets the exact colour the gradient has behind it, and the control then
+	// blends into the dialog instead of showing the stale grey band it was
+	// created with.
+	const bool isTrackbar = (id == IDC_DELAY_SLIDER || id == IDC_REPEAT_SLIDER);
+	if (isTrackbar && pWnd != NULL) {
+		CRect rcControl;
+		pWnd->GetWindowRect(&rcControl);
+		ScreenToClient(&rcControl);
+
+		CRect rcClient;
+		GetClientRect(&rcClient);
+
+		const COLORREF clrBehind =
+			m_theme.BackgroundColorAt(rcControl.CenterPoint().y, rcClient.Height());
+		pDC->SetBkColor(clrBehind);
+		return m_theme.SolidBrush(clrBehind);
+	}
+
 	if (nCtlColor == CTLCOLOR_EDIT || isEditBox) {
-		const bool enabled = (pWnd != NULL) && pWnd->IsWindowEnabled();
+		// Read-only is the state that means "out of play" for these fields
+		// (see UpdateControls): a box the mode switch has taken over keeps
+		// the disabled tone, but it is still enabled, because only that way
+		// does the colour set here reach the screen.
+		const bool live = (pWnd != NULL) && pWnd->IsWindowEnabled()
+		               && (pWnd->GetStyle() & ES_READONLY) == 0;
 		pDC->SetBkColor(pal.clrSurface);
-		pDC->SetTextColor(enabled ? pal.clrText : pal.clrTextDisabled);
+		pDC->SetTextColor(live ? pal.clrText : pal.clrTextDisabled);
 		return m_theme.SurfaceBrush();
 	}
 
@@ -1253,7 +1441,16 @@ void CFilterKeysSetterDlg::OnBnClickedSetCurrent()
 	if (!ok) {
 		// filter_keys holds nothing but its own cbSize at this point, so
 		// loading it would quietly replace the dialog with zeroes.
-		ErrorBox(_T("Failed to fetch current settings"));
+		ErrorBox(_T("Failed to fetch current settings."));
+		// Returning here used to leave the three read-outs showing the raw
+		// text from the resource ("status", "flagval", "cps"). They are not
+		// derived from filter_keys -- the flags come from the check boxes and
+		// the status line re-reads the system itself -- so they can still be
+		// filled in, and an unreadable system is worth reporting rather than
+		// hiding behind a placeholder.
+		UpdateFlagVal();
+		UpdateCharsPerSec();
+		UpdateStatus();
 		return;
 	}
 	SetValues(filter_keys);
@@ -1280,10 +1477,17 @@ void CFilterKeysSetterDlg::UpdateControls()
 
 	const BOOL bRepeatMode = (m_nMode == 0) ? TRUE : FALSE;
 
-	m_editWait.EnableWindow(bRepeatMode);
-	m_editDelay.EnableWindow(bRepeatMode);
-	m_editRepeat.EnableWindow(bRepeatMode);
-	m_editBounce.EnableWindow(!bRepeatMode);
+	// The four numeric fields are made read-only rather than disabled. A
+	// disabled edit box draws its own text in the system's COLOR_GRAYTEXT
+	// whatever the parent sets in WM_CTLCOLORSTATIC -- measured on this
+	// dialog -- which puts a grey that is barely legible on the dark surface
+	// into a palette that has no greys. A read-only box keeps the colour
+	// OnCtlColor hands it. The two sliders keep the real disabled state:
+	// a trackbar draws no text, and its thumb changes colour with it.
+	m_editWait.SetReadOnly(!bRepeatMode);
+	m_editDelay.SetReadOnly(!bRepeatMode);
+	m_editRepeat.SetReadOnly(!bRepeatMode);
+	m_editBounce.SetReadOnly(bRepeatMode);
 
 	m_sliderDelay.EnableWindow(bRepeatMode);
 	m_sliderRepeat.EnableWindow(bRepeatMode);
@@ -1356,6 +1560,14 @@ void CFilterKeysSetterDlg::SetReadout(CWnd& label, const CString& strText)
 
 void CFilterKeysSetterDlg::UpdateCharsPerSec()
 {
+	// Guarded for the same reason SetReadout() and SyncSliderFromEdit() are:
+	// EN_CHANGE arrives during the initial UpdateData() and can beat the
+	// control bindings, and a Debug build asserts on a NULL handle where
+	// Release just reads an empty string.
+	if (!::IsWindow(m_editRepeat.GetSafeHwnd())) {
+		return;
+	}
+
 	CString s;
 	m_editRepeat.GetWindowText(s);
 	int val = _wtoi(s);
@@ -1374,7 +1586,14 @@ void CFilterKeysSetterDlg::OnBnClickedApply()
 	if (!UpdateData(TRUE)) {
 		return;
 	}
-	SaveSettings();
+	if (!SaveSettings()) {
+		return;
+	}
+	// The numbers are read tolerantly (see TolerantInt), so a box the user
+	// cleared still carried its previous value -- the one just applied.
+	// Writing them back makes the dialog show what actually took effect
+	// instead of an empty box the user has to guess about.
+	UpdateData(FALSE);
 	UpdateStatus();
 }
 
@@ -1399,7 +1618,7 @@ bool CFilterKeysSetterDlg::SaveSettings()
 	}
 	else {
 		if (m_nBounce > 20000) {
-			ErrorBox(_T("Bounce value is too large.\nMaximum value is 20000."));
+			ErrorBox(_T("Bounce time is too large.\nMaximum value is 20000."));
 			m_editBounce.SetFocus();
 			return false;
 		}

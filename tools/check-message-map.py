@@ -82,6 +82,7 @@ SIGNATURES = {
     "ON_CBN_SELCHANGE": ("void", []),
     "ON_NOTIFY": ("void", ["NMHDR*", "LRESULT*"]),
     "ON_NOTIFY_EX": ("BOOL", ["UINT", "NMHDR*", "LRESULT*"]),
+    "ON_MESSAGE": ("LRESULT", ["WPARAM", "LPARAM"]),
 }
 
 # Spellings that mean the same thing to the compiler.
@@ -155,6 +156,7 @@ CONTROL_MACROS = {
     "ON_EN_SETFOCUS": (1, 0),
     "ON_CBN_SELCHANGE": (1, 0),
     "ON_NOTIFY": (2, 1),
+    "ON_MESSAGE": (1, None),
     "ON_STN_CLICKED": (1, 0),
 }
 
@@ -300,9 +302,17 @@ def check_ddx_types(text, controls, types, rel):
 
 
 # ApplyToControl() in Theme.cpp detaches whole window classes from the visual
-# style. A detached control sends no NM_CUSTOMDRAW, so a control that is both
-# detached and custom drawn is simply never painted by its handler.
+# style. For a button the visual style is what sends NM_CUSTOMDRAW, so a button
+# that is both detached and custom drawn is simply never painted by its
+# handler.
 THEME_SOURCE = "Theme.cpp"
+
+# The class that keeps sending NM_CUSTOMDRAW after ApplyToControl() has
+# detached it. comctl32 sends that notification for a trackbar with or without
+# a visual style, which is what lets the trackbar be on both paths at once:
+# detached, so WM_CTLCOLORSTATIC decides the colour of the band behind it, and
+# custom drawn, so the channel and the thumb come from OnCustomDrawSlider.
+CUSTOM_DRAWN_WHILE_DETACHED = {"msctls_trackbar32"}
 
 # Resource statement -> (window class, button type) as the dialog manager
 # creates it.
@@ -401,6 +411,8 @@ def check_customdraw(text, controls, rel):
         kind, line = controls[control]
         cls, styles = control_kind(kind, line)
         if cls is None or not any(c.lower() == cls.lower() for c in detached):
+            continue
+        if cls.lower() in CUSTOM_DRAWN_WHILE_DETACHED:
             continue
         if cls.lower() == "button" and styles & exempt:
             continue

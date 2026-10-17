@@ -104,6 +104,8 @@ CTheme::CTheme()
 	, m_brushBack(NULL)
 	, m_brushSurface(NULL)
 	, m_bOwnsBrushes(false)
+	, m_brushSolid(NULL)
+	, m_clrSolid(CLR_INVALID)
 {
 	m_palette = kDarkPalette;
 	Rebuild();
@@ -115,6 +117,10 @@ CTheme::~CTheme()
 	if (m_bOwnsBrushes) {
 		if (m_brushBack) ::DeleteObject(m_brushBack);
 		if (m_brushSurface) ::DeleteObject(m_brushSurface);
+	}
+	if (m_brushSolid) {
+		::DeleteObject(m_brushSolid);
+		m_brushSolid = NULL;
 	}
 }
 
@@ -199,6 +205,14 @@ void CTheme::Rebuild()
 			::DeleteObject(m_brushSurface);
 		}
 	}
+	// The cached solid brush belongs to the palette that has just been
+	// replaced, so it is dropped and rebuilt on the next request.
+	if (m_brushSolid != NULL) {
+		::DeleteObject(m_brushSolid);
+		m_brushSolid = NULL;
+	}
+	m_clrSolid = CLR_INVALID;
+
 	m_brushBack = ::CreateSolidBrush(m_palette.clrBackTop);
 	m_brushSurface = ::CreateSolidBrush(m_palette.clrSurface);
 
@@ -288,6 +302,71 @@ void CTheme::PaintBackgroundSlice(CDC& dc, const CRect& full, const CRect& targe
 	}
 }
 
+COLORREF CTheme::BackgroundColorAt(int y, int height) const
+{
+	if (!IsBranded() || height <= 0) {
+		return m_palette.clrBackTop;
+	}
+
+	// Same banding as PaintBackgroundSlice, only resolved for the single
+	// band 'y' falls into instead of painted band by band.
+	const int bands = 128;
+	const int half = bands / 2;
+
+	int i = MulDiv(y, bands, height);
+	if (i < 0) {
+		i = 0;
+	}
+	else if (i >= bands) {
+		i = bands - 1;
+	}
+
+	const COLORREF stops[3] = {
+		m_palette.clrBackTop,
+		m_palette.clrBackMid,
+		m_palette.clrBackBottom,
+	};
+
+	const int segment = (i < half) ? 0 : 1;
+	const int step    = (i < half) ? i : (i - half);
+	const int steps   = (segment == 0) ? half : (bands - half);
+	const int span    = (steps > 1) ? (steps - 1) : 1;
+
+	const COLORREF from = stops[segment];
+	const COLORREF to   = stops[segment + 1];
+
+	const int r1 = GetRValue(from), r2 = GetRValue(to);
+	const int g1 = GetGValue(from), g2 = GetGValue(to);
+	const int b1 = GetBValue(from), b2 = GetBValue(to);
+
+	return RGB(r1 + (r2 - r1) * step / span,
+	           g1 + (g2 - g1) * step / span,
+	           b1 + (b2 - b1) * step / span);
+}
+
+HBRUSH CTheme::SolidBrush(COLORREF clr)
+{
+	if (m_brushSolid != NULL && m_clrSolid == clr) {
+		return m_brushSolid;
+	}
+
+	if (m_brushSolid != NULL) {
+		::DeleteObject(m_brushSolid);
+		m_brushSolid = NULL;
+	}
+
+	m_brushSolid = ::CreateSolidBrush(clr);
+	if (m_brushSolid == NULL) {
+		// Handle exhaustion. WM_CTLCOLOR* must not return NULL, and the
+		// next call retries, so a stock brush bridges the gap.
+		m_clrSolid = CLR_INVALID;
+		return static_cast<HBRUSH>(::GetStockObject(IsDark() ? BLACK_BRUSH : WHITE_BRUSH));
+	}
+
+	m_clrSolid = clr;
+	return m_brushSolid;
+}
+
 void CTheme::ApplyToTitleBar(HWND hWnd) const
 {
 	typedef HRESULT (WINAPI *PFN_DwmSetWindowAttribute)(HWND, DWORD, LPCVOID, DWORD);
@@ -354,7 +433,13 @@ void CTheme::ApplyToControl(HWND hWndControl) const
 	// background from the visual style and ignores the brush returned by
 	// WM_CTLCOLOREDIT, which left white boxes sitting in a dark dialog.
 	const bool isEdit   = (_tcsicmp(szClass, _T("Edit")) == 0);
-	if (!isButton && !isStatic && !isEdit) {
+	// The trackbar follows the same rule. It hands the background stretch
+	// around its channel to WM_CTLCOLORSTATIC, and while it stays attached to
+	// the visual style it fills that stretch itself instead, ignoring the
+	// brush: the band kept whatever the window was created with, which read
+	// as a black strip through the dark dialog.
+	const bool isTrackbar = (_tcsicmp(szClass, _T("msctls_trackbar32")) == 0);
+	if (!isButton && !isStatic && !isEdit && !isTrackbar) {
 		return;
 	}
 
@@ -362,10 +447,12 @@ void CTheme::ApplyToControl(HWND hWndControl) const
 		const LONG style = ::GetWindowLong(hWndControl, GWL_STYLE);
 		const LONG type = style & BS_TYPEMASK;
 		const bool isPushButton = (type == BS_PUSHBUTTON || type == BS_DEFPUSHBUTTON);
-		// Group boxes stay with the style for the same reason push buttons
-		// do: only a themed BUTTON sends NM_CUSTOMDRAW, and that is where
-		// the frame and its caption are drawn. Detached, the classic frame
-		// runs straight through the caption text.
+		// Group boxes stay with the style as well, but for a different
+		// reason: comctl32 sends no NM_CUSTOMDRAW for a BS_GROUPBOX at all,
+		// attached to the style or detached, so CThemedGroupBox paints the
+		// frame and the caption from the control's own window procedure.
+		// Detached, the classic frame would run straight through the caption
+		// text instead.
 		const bool isGroupBox = (type == BS_GROUPBOX);
 		// Check boxes and radio buttons are drawn by the dialog as well,
 		// for the same reason: detached they fall back to the classic

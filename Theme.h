@@ -86,6 +86,15 @@ public:
 	// exact slice of the parent gradient sitting behind it.
 	void PaintBackgroundSlice(CDC& dc, const CRect& full, const CRect& target) const;
 
+	// The colour that gradient has at 'y' out of 'height' pixels. Where only
+	// a flat colour can be handed out -- the brush a trackbar erases itself
+	// with -- this is close enough to the gradient that no seam shows.
+	COLORREF BackgroundColorAt(int y, int height) const;
+
+	// A solid brush of that colour, owned by this instance and recreated
+	// only when the colour actually changes.
+	HBRUSH SolidBrush(COLORREF clr);
+
 	// Switches the window frame between the light and dark title bar.
 	// Silently does nothing on Windows versions that do not support it.
 	void ApplyToTitleBar(HWND hWnd) const;
@@ -112,6 +121,9 @@ private:
 	ThemePalette m_palette;
 	HBRUSH m_brushBack;
 	HBRUSH m_brushSurface;
+	// Cached solid brush behind BackgroundColorAt()/SolidBrush().
+	HBRUSH m_brushSolid;
+	COLORREF m_clrSolid;
 	// False when the two handles above are stock objects, which must not
 	// be deleted.
 	bool m_bOwnsBrushes;

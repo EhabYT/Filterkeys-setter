@@ -87,18 +87,34 @@ flowchart TD
     apply["ApplyToTitleBar, ApplyToControl per child, ApplyToToolTip"]
 
     apply --> route{"Which control?"}
-    route -- "push button, group box,<br/>check box, radio, trackbar" --> cd["Stays with the visual style<br/>so NM_CUSTOMDRAW arrives<br/>-> the painters in FilterKeysSetterDlg.cpp"]
-    route -- "edit, static" --> ctl["Detached from the visual style<br/>-> WM_CTLCOLOR* decides the colours"]
+    route -- "push button, check box, radio" --> cd["Stays with the visual style<br/>so NM_CUSTOMDRAW arrives<br/>-> the painters in FilterKeysSetterDlg.cpp"]
+    route -- "group box" --> grp["Keeps the visual style, but<br/>comctl32 never sends it<br/>NM_CUSTOMDRAW -> its own window<br/>procedure paints frame, caption"]
+    route -- "edit, static, trackbar" --> ctl["Detached from the visual style<br/>-> WM_CTLCOLOR* decides the colours"]
     route -- "edit, again" --> frame["Client edge removed<br/>-> PaintEditFrames draws the outline"]
+    route -- "trackbar, again" --> thumb["Custom drawn all the same<br/>-> OnCustomDrawSlider paints<br/>the channel and the thumb"]
     route -- "tool tip" --> tip["Detached<br/>-> TTM_SETTIPBKCOLOR / TTM_SETTIPTEXTCOLOR"]
     route -- "dialog background" --> bg["OnEraseBkgnd<br/>-> three-stop gradient, 128 bands"]
 ```
 
-The rule behind the split: a control detached from the visual style sends
-no `NM_CUSTOMDRAW`, and a control still attached to it ignores the brush
-from `WM_CTLCOLOR*`. Each control has to be on exactly one of the two
-paths, and `tools/check-message-map.py` fails the build if one ends up on
-both or neither. The colours all come from [BRAND.md](BRAND.md).
+The rule behind the split: for a push button, check box or radio button the
+visual style is what sends `NM_CUSTOMDRAW`, so a detached button is never
+painted by its handler, and a control that keeps the style ignores the brush
+from `WM_CTLCOLOR*`. Each of those therefore has to be on exactly one of the
+two paths, and `tools/check-message-map.py` fails the build if one ends up on
+both or neither.
+
+Two controls do not fit that split. A group box keeps the style -- which is
+what lets comctl32 draw it in the high contrast scheme when the subclass hands
+it back -- but comctl32 sends no `NM_CUSTOMDRAW` for it at all, so its frame
+and its caption come from its own window procedure, `CThemedGroupBox`. That
+painter fills the whole rectangle of the control, and the other controls of the
+group sit inside it, so the subclass also sets `WS_CLIPSIBLINGS`, and Windows
+clips the fill out of their rectangles. The trackbar is the other: comctl32
+sends `NM_CUSTOMDRAW` for a trackbar with or without a visual style, so
+detaching it costs nothing and gains the one thing a custom draw handler
+cannot supply -- a background colour, which is the slice of the gradient
+behind the control. The checkers know it by name. The colours all come from
+[BRAND.md](BRAND.md).
 
 ## 3. From an edit to a release
 

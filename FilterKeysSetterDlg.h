@@ -6,6 +6,34 @@
 #include "Theme.h"
 
 
+// A group box has to be painted from its own window procedure. comctl32
+// sends NM_CUSTOMDRAW for the push buttons, check boxes and radio buttons in
+// this dialog, but never for a BS_GROUPBOX -- attached to the visual style or
+// detached, measured on the first paint of the running dialog. Left to
+// itself, the control is drawn in the system colours: a black caption on the
+// dark navy background, in both themes. This subclass paints the frame and
+// the caption in the theme's colours instead, and hands the control back to
+// comctl32 under high contrast, where the system colours are the point.
+class CThemedGroupBox : public CButton
+{
+public:
+	CThemedGroupBox() : m_pTheme(NULL) {}
+
+	void SetTheme(const CTheme* pTheme) { m_pTheme = pTheme; }
+
+protected:
+	virtual void PreSubclassWindow();
+	afx_msg void OnPaint();
+	afx_msg LRESULT OnPrintClient(WPARAM wParam, LPARAM lParam);
+	DECLARE_MESSAGE_MAP()
+
+private:
+	void PaintBranded(CDC& dc);
+
+	const CTheme* m_pTheme;
+};
+
+
 // CFilterKeysSetterDlg dialog
 class CFilterKeysSetterDlg : public CDialog
 {
@@ -46,7 +74,6 @@ protected:
 	// Slider <-> edit box synchronisation
 	void InitSliders();
 	void InitToolTips();
-	CRect BackgroundBehind(HWND hWndChild);
 	void PaintEditFrames(CDC& dc);
 	void SyncSliderFromEdit(CSliderCtrl& slider, CEdit& edit);
 	void SyncEditFromSlider(CSliderCtrl& slider, CEdit& edit);
@@ -80,7 +107,6 @@ protected:
 	afx_msg void OnHScroll(UINT nSBCode, UINT nPos, CScrollBar* pScrollBar);
 	afx_msg void OnCustomDrawSlider(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnCustomDrawButton(NMHDR* pNMHDR, LRESULT* pResult);
-	afx_msg void OnCustomDrawGroupBox(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnCustomDrawCheckBox(NMHDR* pNMHDR, LRESULT* pResult);
 	afx_msg void OnSettingChange(UINT uFlags, LPCTSTR lpszSection);
 
@@ -115,9 +141,7 @@ protected:
 	CEdit m_editDelay;
 	CEdit m_editRepeat;
 	CEdit m_editBounce;
-
-	CButton m_radioIgnoreQuick;
-	CButton m_radioIgnoreRepeated;
+	CEdit m_editTest;
 
 	CStatic m_staticFlagVal;
 	CStatic m_staticCharsPerSec;
@@ -127,6 +151,14 @@ protected:
 	CSliderCtrl m_sliderRepeat;
 
 	CButton m_chkDarkTheme;
+
+	// The five group boxes paint their own frame and caption; the dialog only
+	// hands them the palette.
+	CThemedGroupBox m_grpSettings;
+	CThemedGroupBox m_grpFlags;
+	CThemedGroupBox m_grpApplied;
+	CThemedGroupBox m_grpLoad;
+	CThemedGroupBox m_grpTest;
 
 	CToolTipCtrl m_toolTip;
 

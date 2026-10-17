@@ -57,7 +57,10 @@ here because the checker insists, which is the point of the rule.
 3. **No greys.** Not in text, not in borders, not in disabled states. The
    non-client sunken edge of the edit boxes was removed for this reason
    alone; see *The grey trench around the edit boxes* in
-   [UI-UPGRADE.md](UI-UPGRADE.md).
+   [UI-UPGRADE.md](UI-UPGRADE.md). One grey is left, and it is not ours to
+   set: the test field's cue banner is drawn by comctl32 in
+   `COLOR_GRAYTEXT`, and it is kept because it is the field's accessible
+   name.
 4. **Contrast decides ties.** Where the identity and legibility disagree,
    legibility wins and the departure is written down. There are two:
    `#A8BBD6` above, and `#3778B5` as disabled text in the light theme at
@@ -95,9 +98,10 @@ these numbers cannot drift away from the colours.
 | Thing | File |
 | --- | --- |
 | The two palettes and the high contrast fallback | `Theme.cpp` |
-| The gradient and the slice a child control sits on | `CTheme::PaintBackgroundSlice` |
-| Buttons, group boxes, check boxes, radio buttons | the painters in `FilterKeysSetterDlg.cpp` |
-| Trackbars | `CFilterKeysSetterDlg::OnCustomDrawSlider` |
+| The gradient and the slice a child control sits on | `CTheme::PaintBackgroundSlice`, and `CTheme::BackgroundColorAt` for the one control that can only be handed a flat colour |
+| Push buttons, check boxes, radio buttons | the painters in `FilterKeysSetterDlg.cpp`, reached through `NM_CUSTOMDRAW` |
+| Group boxes | `CThemedGroupBox`, declared in `FilterKeysSetterDlg.h` and defined in `FilterKeysSetterDlg.cpp`, painting them from their own window procedure because comctl32 sends no `NM_CUSTOMDRAW` for a `BS_GROUPBOX` |
+| Trackbars | the channel and thumb from `CFilterKeysSetterDlg::OnCustomDrawSlider`, the band behind them from `OnCtlColor` |
 | Edit boxes and labels | `CFilterKeysSetterDlg::OnCtlColor` |
 | Tool tips | `CTheme::ApplyToToolTip` |
 | The previews under `img/` | `tools/render-dialog.py`, which carries both palettes and has to match |
